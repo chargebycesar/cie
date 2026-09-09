@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boletines IRVE · Comunidad de Madrid</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<header>
+  <div class="marca">
+    <span class="logo">⚡</span>
+    <div>
+      <h1>Boletines IRVE</h1>
+      <p>Punto de recarga de vehículo eléctrico · Comunidad de Madrid</p>
+    </div>
+  </div>
+  <nav class="pestanas">
+    <button class="pestana activa" data-panel="nuevo">Nuevo expediente</button>
+    <button class="pestana" data-panel="expedientes">Expedientes</button>
+    <button class="pestana" data-panel="config">Configuración</button>
+  </nav>
+</header>
+
+<main>
+
+<div id="sin-servidor" class="alarma" hidden>
+  <strong>He perdido el contacto con el programa.</strong>
+  Se habrá cerrado la ventana negra. Vuelve a abrir <code>iniciar.bat</code>
+  y pulsa aquí para reintentar.
+  <button type="button" id="btn-reintentar">Reintentar</button>
+</div>
+
+<!-- ══════════════════ NUEVO EXPEDIENTE ══════════════════ -->
+<section id="panel-nuevo" class="panel activa">
+
+  <form id="formulario" autocomplete="off">
+
+    <!-- ─── 1 · Cliente ─── -->
+    <fieldset>
+      <legend>1 · Cliente y emplazamiento</legend>
+      <div class="rejilla">
+        <label class="c2">NIF / CIF <span class="obl">*</span>
+          <input name="titular_nif" required placeholder="12345678Z"></label>
+        <label class="c3">Primer apellido <span class="obl">*</span>
+          <input name="titular_apellido1" required></label>
+        <label class="c3">Segundo apellido
+          <input name="titular_apellido2"></label>
+        <label class="c4">Nombre o razón social <span class="obl">*</span>
+          <input name="titular_nombre" required></label>
+
+        <label class="c2">Tipo de vía
+          <select name="titular_tipo_via" data-lista="tipos_via"></select></label>
+        <label class="c5">Nombre de la vía <span class="obl">*</span>
+          <input name="titular_nombre_via" required></label>
+        <label class="c1">Nº <input name="titular_numero"></label>
+        <label class="c1">Bloque <input name="titular_bloque"></label>
+        <label class="c1">Esc. <input name="titular_escalera"></label>
+        <label class="c1">Piso <input name="titular_piso"></label>
+        <label class="c1">Puerta <input name="titular_puerta"></label>
+
+        <label class="c4">Localidad <span class="obl">*</span>
+          <input name="titular_localidad" required list="lista-localidades"></label>
+        <label class="c2">C.P. <input name="titular_cp" inputmode="numeric"></label>
+        <label class="c2">Provincia <input name="titular_provincia" value="MADRID"></label>
+        <label class="c2">Móvil <input name="titular_movil"></label>
+        <label class="c2">Teléfono fijo <input name="titular_fijo"></label>
+        <label class="c6">Correo electrónico <input name="titular_email" type="email"></label>
+
+        <label class="c2">Plaza de garaje nº <input name="plaza_numero"></label>
+        <label class="c2">Planta <input name="plaza_planta" placeholder="-1"></label>
+      </div>
+
+      <label class="casilla ancho separa">
+        <input type="checkbox" id="mismo_domicilio" checked>
+        <span>El punto de recarga está en la misma dirección que el titular</span>
+      </label>
+      <div class="rejilla" id="bloque-emplazamiento" hidden>
+        <label class="c2">Tipo de vía
+          <select name="empl_tipo_via" data-lista="tipos_via"></select></label>
+        <label class="c5">Nombre de la vía <input name="empl_nombre_via"></label>
+        <label class="c1">Nº <input name="empl_numero"></label>
+        <label class="c1">Bloque <input name="empl_bloque"></label>
+        <label class="c1">Esc. <input name="empl_escalera"></label>
+        <label class="c1">Piso <input name="empl_piso"></label>
+        <label class="c1">Puerta <input name="empl_puerta"></label>
+        <label class="c4">Localidad
+          <input name="empl_localidad" list="lista-localidades"></label>
+        <label class="c2">C.P. <input name="empl_cp" inputmode="numeric"></label>
+        <label class="c2">Provincia <input name="empl_provincia" value="MADRID"></label>
+      </div>
+      <datalist id="lista-localidades"></datalist>
+    </fieldset>
+
+    <!-- ─── 2 · La obra ─── -->
+    <fieldset>
+      <legend>2 · La obra</legend>
+      <div class="rejilla">
+        <label class="c2">Longitud de la línea (m) <span class="obl">*</span>
+          <input name="longitud" required placeholder="28" inputmode="decimal"></label>
+        <label class="c2">Potencia del punto (kW) <span class="obl">*</span>
+          <input name="potencia" value="7,36" required inputmode="decimal"></label>
+        <label class="c2">Nº de puntos <input name="num_puntos" value="1"></label>
+        <label class="c6">Marca y modelo del cargador
+          <input name="descripcion_punto" placeholder="PUNTO DE RECARGA V.E. TIPO 2"></label>
+
+        <label class="c6">Origen de la línea
+          <select name="origen_linea" data-lista="opciones.origen_linea"></select></label>
+        <label class="c6">Esquema ITC-BT-52
+          <select name="esquema" data-lista="esquemas"></select></label>
+
+        <label class="c4">CUPS <input name="cups" placeholder="ES0031000000000000AB"></label>
+        <label class="c5">Empresa distribuidora
+          <input name="distribuidora" readonly class="calculado"
+                 placeholder="se rellena sola al escribir el CUPS"></label>
+        <label class="c3">Contador ubicado en
+          <select name="ubicacion_contador" data-lista="ubicacion_contador"></select></label>
+
+        <label class="c2">Uso
+          <select name="uso_irve"><option>PRIVADO</option><option>PÚBLICO</option></select></label>
+        <label class="c2">Garaje
+          <select name="tipo_garaje"><option>COMUNITARIO</option><option>INDIVIDUAL</option></select></label>
+        <label class="c2">Situación
+          <select name="ubicacion_fisica"><option>INTERIOR</option><option>EXTERIOR</option></select></label>
+        <label class="c3">Fecha de firma <input name="fecha" type="date"></label>
+        <label class="c3">Nº expediente <input name="num_expediente" placeholder="opcional"></label>
+      </div>
+    </fieldset>
+
+    <!-- ─── 3 · Conductor y protecciones ─── -->
+    <fieldset>
+      <legend>3 · Conductor y protecciones</legend>
+
+      <div class="rejilla">
+        <label class="c2">Sección (mm²)
+          <select name="seccion" data-lista="opciones.seccion"></select></label>
+        <label class="c2">Material
+          <select name="material" data-lista="opciones.material"></select></label>
+        <label class="c4">Tipo de cable
+          <select name="tipo_cable" data-lista="tipos_cable"></select></label>
+        <label class="c2">Nº de conductores
+          <select name="fases" data-lista="opciones.fases"></select></label>
+        <label class="c2">Cond. protección (mm²)
+          <select name="conductor_proteccion" data-lista="opciones.conductor_proteccion"></select></label>
+
+        <label class="c2">Diámetro tubo (mm)
+          <select name="diametro_tubo" data-lista="opciones.diametro_tubo"></select></label>
+        <label class="c2">Nº de tubos
+          <select name="num_tubos" data-lista="opciones.num_tubos"></select></label>
+        <label class="c4">Tipo de instalación · derivación (ITC-BT-20)
+          <select name="tipo_instalacion_di" data-lista="tipos_instalacion_bt20"></select></label>
+        <label class="c4">Tipo de instalación · circuito (ITC-BT-26)
+          <select name="tipo_instalacion_circuito" data-lista="tipos_instalacion_bt26"></select></label>
+
+        <label class="c2">Magnetotérmico (A)
+          <select name="iga_intensidad" data-lista="opciones.iga_intensidad"></select></label>
+        <label class="c2">Poder de corte (kA)
+          <select name="iga_poder_corte" data-lista="opciones.iga_poder_corte"></select></label>
+        <label class="c2">Diferencial (A)
+          <select name="dif_intensidad" data-lista="opciones.dif_intensidad"></select></label>
+        <label class="c2">Sensibilidad (mA)
+          <select name="dif_sensibilidad" data-lista="opciones.dif_sensibilidad"></select></label>
+        <label class="c2">Clase
+          <select name="dif_clase" data-lista="opciones.dif_clase"></select></label>
+        <label class="c2">Fusible seguridad (A)
+          <select name="fusible_seguridad" data-lista="opciones.fusible_seguridad"></select></label>
+
+        <label class="c2">Suministro
+          <select name="tipo_suministro">
+            <option>Monofásico</option><option>Trifásico</option>
+          </select></label>
+        <label class="c2">Tensión (V) <input name="tension" value="230"></label>
+      </div>
+
+      <div class="calculo" id="calculo">
+        <div><span class="k">Intensidad de cálculo</span><span class="v" id="calc-i">—</span></div>
+        <div><span class="k">Pot. máx. admisible</span><span class="v" id="calc-adm">—</span></div>
+        <div><span class="k">Caída de tensión</span><span class="v" id="calc-v">—</span></div>
+        <div><span class="k">Sobre la tensión</span><span class="v" id="calc-p">—</span></div>
+        <div class="limite" id="calc-limite">Límite ITC-BT-52: 5 %</div>
+      </div>
+
+      <div class="barra-accion separa">
+        <button type="button" class="secundario" id="btn-guardar-preset">
+          Guardar estos valores como predeterminados</button>
+        <span class="pista" id="aviso-preset">Al elegir una sección se ajustan
+          solas las protecciones y el conductor de protección.</span>
+      </div>
+    </fieldset>
+
+    <!-- ─── 4 · Comunidad de propietarios ─── -->
+    <fieldset>
+      <legend>4 · Comunidad de propietarios</legend>
+      <label class="casilla ancho">
+        <input type="checkbox" name="incluir_anexo_garaje" id="incluir_anexo_garaje">
+        <span>Incluir el anexo de inspección periódica del garaje
+          <em>(garajes de 25 vehículos o más, Acta XII del GTREBT)</em></span>
+      </label>
+      <p class="ayuda" id="pista-cp" hidden>
+        Puedes dejarlo en blanco. El anexo sale con esos huecos vacíos y
+        rellenables, para que el cliente los complete en su casa desde el PDF.
+      </p>
+      <div class="rejilla" id="bloque-cp" hidden>
+        <label class="c5">Nombre de la comunidad <input name="cp_nombre"></label>
+        <label class="c2">CIF <input name="cp_nif"></label>
+        <label class="c5">Domicilio <input name="cp_domicilio"></label>
+        <label class="c4">Localidad
+          <input name="cp_localidad" list="lista-localidades"></label>
+        <label class="c2">C.P. <input name="cp_cp"></label>
+        <label class="c3">Provincia <input name="cp_provincia" value="MADRID"></label>
+      </div>
+    </fieldset>
+
+    <!-- ─── 5 · Observaciones ─── -->
+    <details class="avanzado">
+      <summary>Observaciones para la memoria descriptiva (opcional)</summary>
+      <div class="rejilla">
+        <label class="ancho">Se añaden al final de la memoria del MTD
+          <textarea name="observaciones" rows="3"></textarea></label>
+      </div>
+    </details>
+
+    <div class="barra-accion">
+      <button type="submit" class="principal" id="btn-generar">Generar documentos</button>
+      <button type="button" class="secundario" id="btn-limpiar">Vaciar formulario</button>
+      <span class="pista">Los documentos se guardan en <code>salida\</code></span>
+    </div>
+  </form>
+
+  <div id="resultado" class="resultado" hidden></div>
+</section>
+
+<!-- ══════════════════ EXPEDIENTES ══════════════════ -->
+<section id="panel-expedientes" class="panel">
+  <h2>Expedientes generados</h2>
+  <p class="ayuda">Pulsa uno para volver a cargar sus datos en el formulario y rehacerlo.</p>
+  <ul id="lista-expedientes" class="lista"></ul>
+  <button class="secundario" id="btn-abrir-salida">Abrir la carpeta salida</button>
+</section>
+
+<!-- ══════════════════ CONFIGURACIÓN ══════════════════ -->
+<section id="panel-config" class="panel">
+  <h2>Datos de la empresa instaladora</h2>
+  <p class="ayuda">Se escriben igual en todos los documentos. Solo hay que tocarlos si cambia algo.</p>
+  <div class="rejilla" id="bloque-empresa"></div>
+
+  <div class="barra-accion">
+    <button class="principal" id="btn-guardar-config">Guardar configuración</button>
+    <span id="aviso-config" class="pista"></span>
+  </div>
+
+  <h2>Valores técnicos por defecto</h2>
+  <p class="ayuda">
+    Se editan en la pestaña <strong>Nuevo expediente</strong>, en el apartado
+    «Conductor y protecciones». Ajusta lo que quieras y pulsa
+    <strong>Guardar estos valores como predeterminados</strong>. Así se tocan en
+    un solo sitio y ves el efecto en el cálculo al momento.
+  </p>
+
+  <h2>Códigos postales aprendidos</h2>
+  <p class="ayuda">
+    La aplicación recuerda el código postal de cada localidad que escribes, y la
+    siguiente vez lo pone sola. No inventa ninguno: solo recuerda los tuyos.
+  </p>
+  <div id="bloque-cps" class="lista-cps"></div>
+</section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

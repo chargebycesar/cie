@@ -1,0 +1,310 @@
+# -*- coding: utf-8 -*-
+"""
+Deja los impresos oficiales realmente en blanco.
+
+Los PDF de partida no eran impresos vacios: eran expedientes ya rellenados de
+otros trabajos. Ademas de los campos que se ven, arrastraban por dentro:
+
+  - campos de formulario que no cuelgan de ninguna pagina, invisibles al abrir
+    el documento pero recuperables con cualquier extractor de formularios, con
+    nombres, DNI, direcciones y telefonos de terceros;
+  - el dibujo (la apariencia) del texto anterior, que sobrevive aunque se
+    cambie el valor del campo.
+
+Esto se arregla una sola vez, sobre las plantillas, no en cada generacion:
+
+  1. Se busca que campos cuelgan de verdad de una pagina.
+  2. A los demas se les quita valor y dibujo, y se sacan de la lista del
+     formulario, para que la recoleccion de basura del guardado los borre.
+  3. A los que si cuelgan de una pagina se les vacia el valor, salvo los que
+     son del propio impreso (cabeceras, aviso legal, valores fijos), que se
+     reconocen porque el motor no los escribe nunca.
+  4. Las casillas se ponen en Off, pero conservando su dibujo: ahi vive el
+     estado "Si" y sin el no se pueden marcar.
+
+    python herramientas/limpiar_plantillas.py
+
+Deja copia de lo anterior en fuente/respaldo-plantillas/.
+"""
+
+import contextlib
+import io
+import json
+import os
+import re
+import shutil
+import sys
+
+import pymupdf
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PLANTILLAS = os.path.join(RAIZ, "docs", "plantillas")
+RESPALDO = os.path.join(RAIZ, "fuente", "respaldo-plantillas")
+sys.path.insert(0, RAIZ)
+
+
+def clave(doc, xref, k):
+    """Lee una clave del objeto. Devuelve (None, None) si no esta.
+
+    Ojo: xref_get_key no devuelve None cuando falta la clave, devuelve la
+    cadena "null". Si no se traduce aqui, cualquier comprobacion del estilo
+    "esta la clave?" sale que si siempre.
+    """
+    try:
+        tipo, valor = doc.xref_get_key(xref, k)
+    except Exception:
+        return (None, None)
+    if tipo in (None, "null"):
+        return (None, None)
+    return (tipo, valor)
+
+
+def poner(doc, xref, k, v):
+    """Escribe una clave sin protestar: no todo objeto es un diccionario."""
+    try:
+        doc.xref_set_key(xref, k, v)
+        return True
+    except Exception:
+        return False
+
+
+def vaciar_dibujo(doc, xref):
+    """Borra el texto dibujado de un campo dejando el objeto en su sitio.
+
+    No vale con quitar la clave /AP: PyMuPDF deja escrito un `null` literal y
+    a partir de ahi MuPDF ya no sabe redibujar el campo, asi que el impreso se
+    queda mudo. Lo que si funciona es dejar la apariencia en blanco.
+    """
+    tipo, valor = clave(doc, xref, "AP/N")
+    if tipo != "xref":
+        return False
+    try:
+        doc.update_stream(int(valor.split()[0]), b"")
+        return True
+    except Exception:
+        return False
+
+
+def vaciar_firma(doc, xref, visto=None):
+    """Borra el sello de una firma electronica anterior.
+
+    El campo de firma puede estar vacio y aun asi conservar su dibujo, que dice
+    quien firmo, cuando y con que certificado. El dibujo se monta con formularios
+    XObject encadenados, asi que hay que bajar por todos.
+    """
+    visto = visto or set()
+    if xref in visto:
+        return 0
+    visto.add(xref)
+    n = 0
+    if doc.xref_is_stream(xref):
+        try:
+            doc.update_stream(xref, b"")
+            n += 1
+        except Exception:
+            pass
+    for camino in ("AP/N", "Resources/XObject"):
+        tipo, valor = clave(doc, xref, camino)
+        if tipo == "xref":
+            n += vaciar_firma(doc, int(valor.split()[0]), visto)
+        elif tipo == "dict":
+            for x in re.findall(r"(\d+)\s+\d+\s+R", valor or ""):
+                n += vaciar_firma(doc, int(x), visto)
+    return n
+
+
+def texto_de(valor):
+    v = (valor or "").strip()
+    if v.startswith("(") and v.endswith(")"):
+        v = v[1:-1]
+    return v
+
+
+def raiz_del_campo(doc, xref):
+    """Sube por la cadena de padres hasta el campo de primer nivel."""
+    visto = set()
+    while xref not in visto:
+        visto.add(xref)
+        tipo, valor = clave(doc, xref, "Parent")
+        if tipo != "xref":
+            return xref
+        xref = int(valor.split()[0])
+    return xref
+
+
+def cadena_hasta_pagina(doc, xref):
+    """Todos los xref desde un widget hasta su campo raiz, ambos incluidos."""
+    cadena, visto = [], set()
+    while xref not in visto:
+        visto.add(xref)
+        cadena.append(xref)
+        tipo, valor = clave(doc, xref, "Parent")
+        if tipo != "xref":
+            break
+        xref = int(valor.split()[0])
+    return cadena
+
+
+def limpiar(archivo, escritos):
+    ruta = os.path.join(PLANTILLAS, archivo)
+    os.makedirs(RESPALDO, exist_ok=True)
+    resp = os.path.join(RESPALDO, archivo)
+    if not os.path.exists(resp):
+        shutil.copy(ruta, resp)
+
+    with contextlib.redirect_stderr(io.StringIO()):
+        doc = pymupdf.open(ruta)
+
+        # 1) Que campos cuelgan de una pagina, y cuales son casillas
+        enganchados, raices, orden, casillas = set(), set(), [], set()
+        for pagina in doc:
+            for w in pagina.widgets():
+                enganchados.update(cadena_hasta_pagina(doc, w.xref))
+                r = raiz_del_campo(doc, w.xref)
+                if r not in raices:
+                    raices.add(r)
+                    orden.append(r)
+                if w.field_type in (pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
+                                    pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
+                    casillas.update(cadena_hasta_pagina(doc, w.xref))
+
+        # 2a) Anotaciones sobrantes pegadas a la pagina. Son los recuadros del
+        #     trabajo anterior: ya no son campos de formulario (nadie los
+        #     nombra), pero siguen en la lista de anotaciones de la pagina y
+        #     por eso siguen dibujando su texto. Vaciar el campo no las quita:
+        #     hay que sacarlas de /Annots. Se van solo las que son /Widget y
+        #     no aparecen como campo; los enlaces y demas se quedan.
+        sobrantes = 0
+        for pagina in doc:
+            suyos = {w.xref for w in pagina.widgets()}
+            tipo, valor = clave(doc, pagina.xref, "Annots")
+            if tipo != "array":
+                continue
+            quedan = []
+            for trozo in re.findall(r"(\d+)\s+\d+\s+R", valor):
+                x = int(trozo)
+                _, sub = clave(doc, x, "Subtype")
+                if sub == "/Widget" and x not in suyos:
+                    sobrantes += 1
+                    continue
+                quedan.append(x)
+            doc.xref_set_key(pagina.xref, "Annots",
+                             "[ " + " ".join(f"{x} 0 R" for x in quedan) + " ]")
+
+        # 2) Campos sueltos: los que tienen valor pero no cuelgan de nada.
+        #    Un campo se reconoce por tener /FT o nombre /T. Ojo con no
+        #    confundirlos con los nodos del arbol de paginas, que tambien
+        #    llevan /Kids y /Parent; por eso se descarta todo lo que sea /Page
+        #    o /Pages, y no se tocan ni /Kids ni /Parent: basta con dejarlos
+        #    fuera de la lista del formulario para que la basura se los lleve.
+        sueltos = 0
+        for x in range(1, doc.xref_length()):
+            if x in enganchados:
+                continue
+            _, tipo = clave(doc, x, "Type")
+            if tipo in ("/Page", "/Pages"):
+                continue
+            t_ft, _ = clave(doc, x, "FT")
+            t_t, _ = clave(doc, x, "T")
+            _, sub = clave(doc, x, "Subtype")
+            es_campo = t_ft is not None or t_t is not None
+            # Los recuadros sueltos no llevan ni /FT ni nombre: son solo el
+            # dibujo, y ahi es donde queda el texto del trabajo anterior. Hay
+            # que vaciarlos aunque no sean campos, porque no basta con dejarlos
+            # sin apuntar: la limpieza del guardado no siempre se los lleva.
+            if not es_campo and sub != "/Widget":
+                continue
+            t_v, v = clave(doc, x, "V")
+            if t_v == "string" and texto_de(v):
+                sueltos += 1
+            if es_campo:
+                poner(doc, x, "V", "null")
+            vaciar_dibujo(doc, x)
+
+        # 3) Campos de pagina que rellena el motor: fuera valor y fuera dibujo.
+        #    El valor no siempre esta en el widget: en los impresos con nombres
+        #    del tipo topmostSubform[0].Page1[0].Campo[0] vive en un padre y el
+        #    widget solo lo hereda, asi que hay que subir la cadena. Pero solo
+        #    se toca el valor donde hay nombre de campo (/T): si se le pone /V
+        #    al widget suelto, que es solo un dibujo, el impreso deja de
+        #    aceptar valores y sale en blanco. El dibujo si se vacia entero.
+        vaciados = 0
+        for pagina in doc:
+            for w in pagina.widgets():
+                if w.field_name not in escritos:
+                    continue  # es del impreso, no nuestro
+                es_casilla = w.xref in casillas
+                for x in cadena_hasta_pagina(doc, w.xref):
+                    tiene_nombre = clave(doc, x, "T")[0] is not None
+                    if es_casilla:
+                        # La casilla conserva su dibujo: ahi vive el estado "Si"
+                        if tiene_nombre:
+                            poner(doc, x, "V", "/Off")
+                        poner(doc, x, "AS", "/Off")
+                    else:
+                        if tiene_nombre:
+                            poner(doc, x, "V", "()")
+                        vaciar_dibujo(doc, x)
+                vaciados += 1
+
+        # 3b) Firmas electronicas de trabajos anteriores. El campo esta vacio
+        #     pero su sello sigue diciendo quien firmo y cuando.
+        firmas = 0
+        for x in range(1, doc.xref_length()):
+            _, ft = clave(doc, x, "FT")
+            if ft == "/Sig":
+                firmas += bool(vaciar_firma(doc, x))
+
+        # 4) La lista del formulario, solo con lo que cuelga de una pagina.
+        #    Se cambia la lista dentro del AcroForm que ya hay, sin sustituirlo
+        #    entero: ahi vive /DR, el catalogo de fuentes del impreso. Si se
+        #    pierde, el visor no sabe con que letra escribir y los campos se
+        #    quedan mudos aunque tengan valor.
+        catalogo = doc.pdf_catalog()
+        lista = "[ " + " ".join(f"{x} 0 R" for x in orden) + " ]"
+        tipo, valor = clave(doc, catalogo, "AcroForm")
+        if tipo == "xref":
+            doc.xref_set_key(int(valor.split()[0]), "Fields", lista)
+        elif tipo == "dict":
+            # Algunos impresos lo llevan escrito dentro del catalogo en vez de
+            # apuntar a un objeto aparte
+            doc.xref_set_key(catalogo, "AcroForm/Fields", lista)
+        else:
+            # El impreso no tenia AcroForm utilizable: se hace uno de cero
+            nuevo = doc.get_new_xref()
+            doc.update_object(nuevo, f"<< /Fields {lista} "
+                                     f"/DA (/Helv 0 Tf 0 g) /NeedAppearances true >>")
+            doc.xref_set_key(catalogo, "AcroForm", f"{nuevo} 0 R")
+
+        tmp = ruta + ".tmp"
+        # garbage=4 borra lo que ya no apunta nadie: ahi se van los restos
+        doc.save(tmp, garbage=4, deflate=True, clean=True)
+        doc.close()
+
+    antes = os.path.getsize(ruta)
+    shutil.move(tmp, ruta)
+    print(f"  {archivo:<18} {sobrantes:>3} recuadros · {sueltos:>3} sueltos · "
+          f"{vaciados:>3} vaciados · {firmas} firmas · "
+          f"{antes/1024:.0f} -> {os.path.getsize(ruta)/1024:.0f} KB")
+
+
+def main():
+    import nucleo
+    datos = json.load(io.open(os.path.join(RAIZ, "prueba.json"), encoding="utf-8"))
+    cfg = nucleo.cargar_config()
+    preset = nucleo.valores_tecnicos(datos, cfg)
+    calc = nucleo.calcular(datos, preset, cfg)
+    mapas = {
+        "MTD.pdf": nucleo.mapa_mtd(datos, cfg, preset, calc),
+        "ANEXO_IVE.pdf": nucleo.mapa_anexo_ive(datos, cfg, preset, calc),
+        "UNIFILAR.pdf": nucleo.mapa_unifilar(datos, cfg, preset, calc),
+        "SOLICITUD.pdf": nucleo.mapa_solicitud(datos, cfg),
+        "AUTORIZACION.pdf": nucleo.mapa_autorizacion(datos, cfg),
+        "ANEXO_GARAJE.pdf": nucleo.mapa_anexo_garaje(datos, cfg),
+    }
+    for archivo, (mapa, cas) in mapas.items():
+        limpiar(archivo, set(mapa) | set(cas))
+
+
+if __name__ == "__main__":
+    main()
