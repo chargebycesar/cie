@@ -314,6 +314,24 @@ def limpiar(archivo, escritos):
             doc.xref_set_key(pagina.xref, "Annots",
                              "[ " + " ".join(f"{x} 0 R" for x in quedan) + " ]")
 
+        # 1b) Las anotaciones que no son campos se quedan -pueden ser parte del
+        #     impreso, como el esquema de la segunda pagina del anexo IVE, que
+        #     es un sello-, pero sin el rastro de quien las puso.
+        firmantes = 0
+        for pagina in doc:
+            tipo, valor = clave(doc, pagina.xref, "Annots")
+            if tipo != "array":
+                continue
+            for trozo in re.findall(r"(\d+)\s+\d+\s+R", valor):
+                x = int(trozo)
+                _, sub = clave(doc, x, "Subtype")
+                if sub is None or sub == "/Widget":
+                    continue
+                for k in ("T", "Contents", "NM", "CreationDate", "M"):
+                    if clave(doc, x, k)[0] is not None:
+                        poner(doc, x, k, "null")
+                        firmantes += 1
+
         # 2) Campos sueltos: los que tienen valor pero no cuelgan de nada.
         #    Un campo se reconoce por tener /FT o nombre /T. Ojo con no
         #    confundirlos con los nodos del arbol de paginas, que tambien
@@ -330,6 +348,12 @@ def limpiar(archivo, escritos):
             t_ft, _ = clave(doc, x, "FT")
             t_t, _ = clave(doc, x, "T")
             _, sub = clave(doc, x, "Subtype")
+            # Las anotaciones que no son campos -un sello, una nota- tambien
+            # llevan /T, que ahi es el nombre de quien la puso, no un nombre de
+            # campo. Si se cuelan aqui se les borra el dibujo, y en el anexo IVE
+            # el esquema de la segunda pagina es justo eso: un sello.
+            if sub is not None and sub != "/Widget":
+                continue
             es_campo = t_ft is not None or t_t is not None
             # Los recuadros sueltos no llevan ni /FT ni nombre: son solo el
             # dibujo, y ahi es donde queda el texto del trabajo anterior. Hay
@@ -407,7 +431,7 @@ def limpiar(archivo, escritos):
     antes = os.path.getsize(ruta)
     shutil.move(tmp, ruta)
     print(f"  {archivo:<18} {remendadas:>2} apariencias · {tapadores} tapados · "
-          f"{descolgados} recolocados · "
+          f"{descolgados} recolocados · {firmantes} rastros · "
           f"{sobrantes:>3} recuadros · "
           f"{sueltos:>3} sueltos · {vaciados:>3} vaciados · {firmas} firmas · "
           f"{antes/1024:.0f} -> {os.path.getsize(ruta)/1024:.0f} KB")
