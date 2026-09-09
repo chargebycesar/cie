@@ -130,16 +130,23 @@ def preparar_identidad():
     """Git necesita saber quien firma los cambios."""
     _, nombre = git("config", "user.name", callado=True)
     _, correo = git("config", "user.email", callado=True)
-    if nombre and correo:
+    # Un correo sin arroba no es un correo: Git lo acepta, pero GitHub no puede
+    # enlazar los cambios con tu cuenta y salen como de un desconocido.
+    correo_vale = bool(re.match(r"[^@\s]+@[^@\s]+\.[^@\s]+$", correo or ""))
+    if nombre and correo_vale:
         return True
 
     titulo("Quien firma los cambios")
     aviso("""
         Git apunta un nombre y un correo en cada cambio. Solo se pregunta
-        una vez. El correo puede ser el que uses en GitHub.
+        una vez. Pon el correo con el que entras en GitHub, para que los
+        cambios salgan a tu nombre.
         """)
+    if correo and not correo_vale:
+        print(f"  El correo que tienes puesto, {correo!r}, no lleva arroba.")
+        print()
     nombre = nombre or preguntar("Tu nombre")
-    correo = correo or preguntar("Tu correo")
+    correo = preguntar("Tu correo", correo if correo_vale else "")
     if not nombre or not correo:
         print()
         print("  Sin nombre ni correo no se puede continuar.")
@@ -183,6 +190,88 @@ def preparar_destino():
     return ""
 
 
+def subido_alguna_vez():
+    """True si esta rama ya llego a GitHub alguna vez."""
+    codigo, _ = git("rev-parse", "--verify", "origin/main", callado=True)
+    return codigo == 0
+
+
+def queda_por_enviar():
+    """True si hay confirmaciones aqui que no estan en GitHub."""
+    if not subido_alguna_vez():
+        codigo, _ = git("rev-parse", "--verify", "HEAD", callado=True)
+        return codigo == 0        # hay historia local y no ha salido nunca
+    _, cuenta = git("rev-list", "--count", "origin/main..HEAD", callado=True)
+    return cuenta.strip() not in ("", "0")
+
+
+def enviar():
+    """Sube la rama. Devuelve True si lo consigue.
+
+    Si GitHub rechaza el envio porque alla ya hay cosas -lo normal la primera
+    vez, porque GitHub suele crear un README-, se junta lo de alla con lo de
+    aqui y se vuelve a intentar. La direccion del repositorio NO se borra salvo
+    que sea ella la que esta mal: si se borrara, habria que volver a pegarla en
+    cada actualizacion.
+    """
+    codigo, salida = git("push", "-u", "origin", "main")
+    if codigo == 0:
+        return True
+
+    bajo = salida.lower()
+
+    if "not found" in bajo or "does not appear to be a git repository" in bajo:
+        git("remote", "remove", "origin", callado=True)
+        aviso("""
+            GitHub dice que ese repositorio no existe.
+
+            Comprueba la direccion y vuelve a ejecutar esto: te la
+            preguntara otra vez. Tus cambios estan guardados aqui.
+            """)
+        return False
+
+    if "rejected" in bajo or "fetch first" in bajo or "non-fast-forward" in bajo:
+        titulo("En GitHub ya habia algo")
+        aviso("""
+            El repositorio no estaba vacio. Suele pasar la primera vez,
+            porque GitHub crea un README al montarlo. Voy a juntar lo que
+            hay alla con lo de aqui y a subir otra vez.
+            """)
+        git("fetch", "origin", "main", callado=True)
+        codigo, _ = git("merge", "origin/main", "--allow-unrelated-histories",
+                        "-m", "Junta lo que ya habia en GitHub", callado=True)
+        if codigo != 0:
+            # Algun archivo esta en los dos sitios y no coincide
+            _, chocan = git("diff", "--name-only", "--diff-filter=U", callado=True)
+            aviso("""
+                Hay archivos que estan en los dos sitios y no coinciden:
+                """)
+            for f in chocan.splitlines()[:10]:
+                print(f"     {f}")
+            print()
+            if not si_o_no("Me quedo con la version de tu ordenador?"):
+                git("merge", "--abort", callado=True)
+                print()
+                print("  No se ha subido nada y tu carpeta se queda como estaba.")
+                return False
+            git("merge", "--abort", callado=True)
+            git("merge", "origin/main", "--allow-unrelated-histories", "-X", "ours",
+                "-m", "Junta lo que ya habia en GitHub, mandando lo de aqui")
+        codigo, _ = git("push", "-u", "origin", "main")
+        if codigo == 0:
+            return True
+
+    aviso("""
+        El envio ha fallado. Lo de arriba dice por que. Lo mas normal es
+        que no hayas entrado en tu cuenta de GitHub: vuelve a ejecutar
+        esto y completa lo que te pida el navegador.
+
+        La direccion del repositorio se queda guardada, no te la volvera
+        a pedir. Tus cambios estan aqui: no se ha perdido nada.
+        """)
+    return False
+
+
 def pagina_de(url):
     """De https://github.com/usuario/repo.git a la direccion de la web."""
     m = re.search(r"github\.com[/:]([^/]+)/(.+?)(?:\.git)?/?$", url)
@@ -206,19 +295,27 @@ def main():
             """)
         return 1
 
-    primera_vez = preparar_repositorio()
+    preparar_repositorio()
     if not preparar_identidad():
         return 1
+    # La primera vez es la primera SUBIDA, no la primera vez que se abre esto:
+    # si el envio fallo, las instrucciones de encender la pagina hacen falta.
+    primera_vez = not subido_alguna_vez()
 
     # --- que ha cambiado
     titulo("Mirando que ha cambiado")
     git("add", "-A")
     _, listado = git("diff", "--cached", "--name-only")
     ficheros = [f for f in listado.splitlines() if f.strip()]
-    if not ficheros:
+    # Puede no haber nada nuevo y aun asi quedar cosas por enviar: si el envio
+    # anterior fallo, el cambio esta confirmado aqui pero no ha llegado alla.
+    if not ficheros and not queda_por_enviar():
         print("  No hay nada nuevo que subir. Todo esta ya publicado.")
         return 0
-    print(f"  {len(ficheros)} ficheros para subir.")
+    if not ficheros:
+        print("  No hay archivos nuevos, pero quedo un envio a medias.")
+    else:
+        print(f"  {len(ficheros)} ficheros para subir.")
     for f in ficheros[:12]:
         print(f"     {f}")
     if len(ficheros) > 12:
@@ -262,33 +359,20 @@ def main():
 
     # --- subir
     titulo("Subiendo")
-    if primera_vez:
-        mensaje = "Boletines IRVE: primera version"
-    else:
-        mensaje = preguntar("Que has cambiado",
-                            f"Cambios del {date.today():%d/%m/%Y}")
-    codigo, _ = git("commit", "-m", mensaje)
-    if codigo != 0:
-        return 1
+    if ficheros:
+        if primera_vez:
+            mensaje = "Boletines IRVE: primera version"
+        else:
+            mensaje = preguntar("Que has cambiado",
+                                f"Cambios del {date.today():%d/%m/%Y}")
+        codigo, _ = git("commit", "-m", mensaje)
+        if codigo != 0:
+            return 1
 
     print("  Se abrira el navegador para que entres en tu cuenta de GitHub")
     print("  si es la primera vez. Un momento...")
     print()
-    codigo, salida = git("push", "-u", "origin", "main")
-    if codigo != 0:
-        if primera_vez:
-            # Si la direccion estaba mal, que la vuelva a pedir la proxima vez
-            git("remote", "remove", "origin", callado=True)
-        aviso("""
-            El envio ha fallado. Lo de arriba dice por que. Lo mas normal:
-
-            - La direccion estaba mal, o el repositorio de GitHub no esta
-              vacio. Crea uno nuevo sin marcar ninguna casilla.
-            - No has entrado en tu cuenta. Vuelve a ejecutar esto y
-              completa lo que te pida el navegador.
-
-            Tus cambios estan guardados aqui: no se ha perdido nada.
-            """)
+    if not enviar():
         return 1
 
     # --- listo
