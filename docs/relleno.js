@@ -72,6 +72,8 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
     try {
       const c = form.getCheckBox(nombre);
       if (encendida) c.check(); else c.uncheck();
+      // Su dibujo no se regenera: el aspa de estos impresos vive en la
+      // apariencia que ya traen, con el estado «Sí» en vez del habitual «Yes».
       escritos += 1;
     } catch (e) {
       noEncontrados.push(nombre);
@@ -103,19 +105,22 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
       } else {
         campo.setText("");
       }
+      // Solo se redibuja este campo. Regenerar el formulario entero se lleva
+      // por delante la apariencia de los que no tocamos, y algunos la
+      // necesitan: el aviso legal de la ultima pagina del MTD lleva un fondo
+      // opaco que tapa la version antigua impresa debajo. Sin el, los dos
+      // textos salen uno encima del otro.
+      try {
+        campo.updateAppearances(helvetica);
+      } catch (e) { /* si no se puede, queda el NeedAppearances de abajo */ }
       escritos += 1;
     } catch (e) {
       noEncontrados.push(nombre);
     }
   }
 
-  // Genera la apariencia de cada campo para que se vea en cualquier visor.
-  try {
-    form.updateFieldAppearances(helvetica);
-  } catch (e) {
-    // Si algún campo suelto no se puede dibujar, se deja al visor
-    form.acroForm.dict.set(lib.PDFName.of("NeedAppearances"), lib.PDFBool.True);
-  }
+  // Cada campo escrito ya se ha redibujado arriba. Los demás conservan la
+  // apariencia que trae el impreso oficial, que es lo que queremos.
 
   if (opciones && opciones.quitarBotones) quitarNoImprimibles(doc, form, lib);
 

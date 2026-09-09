@@ -220,3 +220,38 @@ button.enlace{
   font:inherit;font-size:13px;text-decoration:underline;padding:0 4px;
 }
 button.enlace:hover{color:#0f4396}
+
+/* Pestañas de un documento dentro de Configuración */
+.pestanas-doc{
+  display:flex;flex-wrap:wrap;gap:6px;
+  border-bottom:1px solid var(--borde);margin:14px 0 16px;
+}
+.pestanas-doc button{
+  background:transparent;border:0;border-bottom:2px solid transparent;
+  color:var(--suave);padding:8px 14px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:inherit;
+}
+.pestanas-doc button:hover{color:var(--texto)}
+.pestanas-doc button.activa{color:var(--acento);border-bottom-color:var(--acento)}
+
+.casilla{display:flex;align-items:center;gap:8px;font-size:14px}
+.casilla input{width:auto;margin:0}
+
+.extras{margin-top:18px}
+.extras h3{font-size:14px;margin:0 0 4px}
+.fila-extra{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:7px 10px;border:1px solid var(--borde);border-radius:8px;
+  margin-bottom:6px;font-size:13px;
+}
+.fila-extra .campo{font-weight:600}
+.fila-extra .nombre{color:var(--suave);font-size:12px}
+.fila-extra input[type=text]{flex:1;min-width:140px}
+.fila-extra button{
+  background:transparent;border:0;color:var(--error);cursor:pointer;
+  font-size:18px;line-height:1;padding:0 4px;font-family:inherit;
+}
+.anadir-extra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.anadir-extra select{flex:2;min-width:220px}
+.anadir-extra #extra-buscar{flex:0 0 140px;min-width:110px}
+.anadir-extra input{flex:1;min-width:120px}

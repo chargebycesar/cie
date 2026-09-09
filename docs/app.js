@@ -50,6 +50,9 @@ function guardarAjustes() {
     empresa: CFG.empresa,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
+    valores_fijos_mtd: CFG.valores_fijos_mtd,
+    valores_fijos_cie: CFG.valores_fijos_cie,
+    extras: CFG.extras,
   });
 }
 
@@ -68,12 +71,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     CFG.empresa = { ...CFG.empresa, ...guardado.empresa };
     CFG.tecnica = { ...CFG.tecnica, ...guardado.tecnica };
     CFG.codigos_postales = { ...CFG.codigos_postales, ...guardado.codigos_postales };
+    // Los valores de cada impreso se mezclan con los de fábrica, no los
+    // sustituyen: así, si algún día se añade uno nuevo, aparece igual.
+    CFG.valores_fijos_mtd = { ...CFG.valores_fijos_mtd, ...guardado.valores_fijos_mtd };
+    CFG.valores_fijos_cie = { ...CFG.valores_fijos_cie, ...guardado.valores_fijos_cie };
+    CFG.extras = { ...CFG.extras, ...guardado.extras };
   }
 
   rellenarListas();
   aplicarValoresTecnicos(CFG.tecnica);
   pintarLocalidades();
   pintarConfigEmpresa();
+  pintarPestanasDoc();
+  pintarPanelDoc();
   pintarCodigosPostales();
   pintarExpedientes();
   ponerFechaHoy();
@@ -509,14 +519,270 @@ $("#btn-guardar-preset").addEventListener("click", () => {
   avisar("#aviso-preset", "Guardado como valores por defecto.");
 });
 
+/* ══════════════ ajustes por documento ══════════════ */
+
+/* Una pestaña por impreso. Arriba, lo que la aplicación pone siempre, con su
+   valor de fábrica -el de un punto de recarga corriente-. Abajo, cualquier
+   otro campo del impreso, para no tener que tocar el programa cuando algún
+   expediente pida algo distinto. */
+const DOCS_CONFIG = [
+  { id: "MTD.pdf", titulo: "MTD", fijos: "valores_fijos_mtd" },
+  { id: "CIE", titulo: "CIE", fijos: "valores_fijos_cie" },
+  { id: "ANEXO_IVE.pdf", titulo: "Anexo IVE" },
+  { id: "UNIFILAR.pdf", titulo: "Unifilar" },
+  { id: "SOLICITUD.pdf", titulo: "Solicitud" },
+  { id: "AUTORIZACION.pdf", titulo: "Autorización" },
+  { id: "ANEXO_GARAJE.pdf", titulo: "Anexo garaje" },
+];
+
+const ETIQUETAS_FIJOS = {
+  uso: "Uso", grado_electrificacion: "Grado de electrificación",
+  uso_instalacion: "Uso de la instalación", memoria_por: "Memoria por",
+  punto_conexion: "Punto de conexión", tipo_acometida: "Tipo de acometida",
+  material_acometida: "Material de la acometida", cgp_tipo: "C.G.P. tipo",
+  cgp_in_base: "C.G.P. In base", cgp_in_cartucho: "C.G.P. In cartucho",
+  cgp_esquema: "C.G.P. esquema", lga_seccion: "L.G.A. sección",
+  lga_material: "L.G.A. material", igm_nominal: "I.G.M. nominal",
+  igm_poder_corte: "I.G.M. poder de corte",
+  num_derivaciones: "Nº de derivaciones", modulo_tipo: "Módulo, tipo",
+  modulo_situacion: "Módulo, situación", tierra_tipo: "Tierra, tipo",
+  tierra_electrodos: "Tierra, electrodos",
+  tierra_linea_enlace: "Tierra, línea de enlace",
+  presupuesto_materiales: "Presupuesto, materiales (€)",
+  presupuesto_mano_obra: "Presupuesto, mano de obra (€)",
+  presupuesto_total: "Presupuesto, total (€)",
+  num_suministros_monofasicos: "Nº de suministros monofásicos",
+  emplazamiento_planta_baja: "Emplazamiento: planta baja",
+  ubicacion_centralizacion_modular: "Ubicación: centralización modular",
+  adjunta_esquema_unifilar: "Se adjunta: esquema unifilar",
+  adjunta_planos_planta: "Se adjunta: planos de planta",
+  adjunta_croquis_trazado: "Se adjunta: croquis del trazado",
+  adjunta_otros: "Se adjunta: otros",
+  actuacion: "Actuación", tipo_instalacion: "Tipo de instalación",
+  aforo: "Aforo", superficie: "Superficie (m²)",
+  pot_ampliada: "Potencia ampliada", pot_original: "Potencia original",
+  esquema_distribucion: "Esquema de distribución",
+  prot_sobretensiones: "Protección de sobretensiones",
+  int_diferencial: "Interruptor diferencial", documentacion: "Documentación",
+  rd1890: "Aplica el RD 1890/2008", itc_bt_51: "Aplica la ITC-BT-51",
+  resistencia_tierra: "Resistencia de puesta a tierra (Ω)",
+  resistencia_aislamiento: "Resistencia de aislamiento (MΩ)",
+  otras_verificaciones: "Otras verificaciones",
+};
+
+const etiquetaFija = k => ETIQUETAS_FIJOS[k]
+  || (k.charAt(0).toUpperCase() + k.slice(1)).replace(/_/g, " ");
+
+let DOC_ACTIVO = DOCS_CONFIG[0].id;
+let CAMPOS_IMPRESOS = null;
+
+/* La lista de campos de cada impreso, con lo que pone escrito al lado. La
+   genera herramientas/indice_campos.py y solo se carga si hace falta, que son
+   120 KB y la mayoría de las veces no se abre esta pantalla. */
+async function camposDelImpreso(archivo) {
+  if (CAMPOS_IMPRESOS === null) {
+    try {
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json")).json();
+    } catch (e) {
+      CAMPOS_IMPRESOS = {};
+    }
+  }
+  return CAMPOS_IMPRESOS[archivo] || [];
+}
+
+function pintarPestanasDoc() {
+  const caja = $("#pestanas-doc");
+  if (!caja) return;
+  caja.innerHTML = "";
+  DOCS_CONFIG.forEach(d => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = d.titulo;
+    b.className = d.id === DOC_ACTIVO ? "activa" : "";
+    b.addEventListener("click", () => {
+      guardarPanelDoc();          // no perder lo escrito al cambiar de pestaña
+      DOC_ACTIVO = d.id;
+      pintarPestanasDoc();
+      pintarPanelDoc();
+    });
+    caja.appendChild(b);
+  });
+}
+
+async function pintarPanelDoc() {
+  const caja = $("#panel-doc");
+  if (!caja) return;
+  const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO) || DOCS_CONFIG[0];
+  caja.innerHTML = "";
+
+  // --- lo que la aplicación pone siempre
+  if (doc.fijos) {
+    const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
+    const rejilla = document.createElement("div");
+    rejilla.className = "rejilla";
+    Object.keys(valores).forEach(k => {
+      const v = valores[k];
+      const l = document.createElement("label");
+      if (typeof v === "boolean") {
+        l.className = "c4 casilla";
+        l.innerHTML = '<input type="checkbox" data-fijo="' + escapar(k) + '"'
+          + (v ? " checked" : "") + "> " + escapar(etiquetaFija(k));
+      } else {
+        l.className = "c4";
+        l.innerHTML = escapar(etiquetaFija(k))
+          + '<input data-fijo="' + escapar(k) + '" value="' + escapar(v) + '">';
+      }
+      rejilla.appendChild(l);
+    });
+    caja.appendChild(rejilla);
+  } else {
+    const p = document.createElement("p");
+    p.className = "ayuda";
+    p.textContent = "Este impreso se rellena entero con los datos del cliente. "
+      + "Abajo puedes añadir cualquier otro campo suyo.";
+    caja.appendChild(p);
+  }
+
+  // --- cualquier otro campo del impreso
+  const extras = CFG.extras || (CFG.extras = {});
+  const mios = extras[doc.id] || (extras[doc.id] = {});
+  const campos = doc.id === "CIE" ? [] : await camposDelImpreso(doc.id);
+  const porNombre = {};
+  campos.forEach(c => { porNombre[c.n] = c; });
+
+  const zona = document.createElement("div");
+  zona.className = "extras";
+  zona.innerHTML = "<h3>Otros campos de este impreso</h3>"
+    + '<p class="ayuda">' + (doc.id === "CIE"
+      ? "Escribe la celda del certificado (por ejemplo A28) y lo que quieras "
+        + "que ponga."
+      : "Elige el campo y escribe lo que quieras que ponga. En una casilla, "
+        + "escribe <strong>sí</strong> o <strong>no</strong>.")
+    + "</p>";
+
+  Object.keys(mios).forEach(nombre => {
+    const valor = mios[nombre];
+    const c = porNombre[nombre];
+    const fila = document.createElement("div");
+    fila.className = "fila-extra";
+    fila.innerHTML =
+      '<span class="campo">' + escapar(c && c.e ? c.e : nombre) + "</span>"
+      + '<span class="nombre">' + escapar(nombre)
+      + (c ? " · pág. " + c.p : "") + "</span>"
+      + (typeof valor === "boolean"
+        ? '<label class="casilla"><input type="checkbox" data-extra="'
+          + escapar(nombre) + '"' + (valor ? " checked" : "") + "> marcada</label>"
+        : '<input type="text" data-extra="' + escapar(nombre)
+          + '" value="' + escapar(valor) + '">')
+      + '<button type="button" data-quitar="' + escapar(nombre)
+      + '" title="Quitar">×</button>';
+    zona.appendChild(fila);
+  });
+
+  const anadir = document.createElement("div");
+  anadir.className = "anadir-extra";
+  if (doc.id === "CIE") {
+    anadir.innerHTML = '<input id="extra-nombre" placeholder="Celda, p. ej. A28">'
+      + '<input id="extra-valor" placeholder="Lo que debe poner">'
+      + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
+  } else {
+    const libres = campos.filter(c => !(c.n in mios) && c.t !== "otro");
+    const opciones = libres.map(c => {
+      const texto = (c.e ? c.e + " — " : "") + c.n + " · pág. " + c.p
+        + (c.t === "casilla" ? " · casilla" : "");
+      return '<option value="' + escapar(c.n) + '">' + escapar(texto) + "</option>";
+    }).join("");
+    // Un impreso puede tener 1.600 campos: sin un buscador no hay quien
+    // encuentre el suyo en el desplegable.
+    anadir.innerHTML = '<input id="extra-buscar" placeholder="Buscar…">'
+      + '<select id="extra-nombre"><option value="">'
+      + "Elige un campo (" + libres.length + ")</option>" + opciones + "</select>"
+      + '<input id="extra-valor" placeholder="Lo que debe poner">'
+      + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
+  }
+  zona.appendChild(anadir);
+  caja.appendChild(zona);
+
+  const buscar = $("#extra-buscar");
+  if (buscar) {
+    const sel = $("#extra-nombre");
+    const todas = [...sel.options];
+    buscar.addEventListener("input", () => {
+      const q = buscar.value.trim().toLowerCase();
+      const vistas = q
+        ? todas.filter((o, i) => i === 0 || o.textContent.toLowerCase().includes(q))
+        : todas;
+      sel.innerHTML = "";
+      vistas.forEach(o => sel.appendChild(o));
+      vistas[0].textContent = q
+        ? "Elige un campo (" + (vistas.length - 1) + " de " + (todas.length - 1) + ")"
+        : "Elige un campo (" + (todas.length - 1) + ")";
+    });
+  }
+
+  zona.querySelectorAll("[data-quitar]").forEach(b => {
+    b.addEventListener("click", () => {
+      guardarPanelDoc();
+      delete (CFG.extras[doc.id] || {})[b.dataset.quitar];
+      guardarAjustes();
+      pintarPanelDoc();
+    });
+  });
+
+  $("#btn-anadir-extra").addEventListener("click", () => {
+    const nombre = ($("#extra-nombre").value || "").trim();
+    const valor = ($("#extra-valor").value || "").trim();
+    if (!nombre) { avisar("#aviso-doc", "Elige antes un campo."); return; }
+    guardarPanelDoc();
+    const bajo = valor.toLowerCase();
+    const c = porNombre[nombre];
+    const esCasilla = (c && c.t === "casilla")
+      || ["sí", "si", "no"].indexOf(bajo) !== -1;
+    CFG.extras[doc.id][nombre] = esCasilla
+      ? ["no", "", "0"].indexOf(bajo) === -1
+      : valor;
+    guardarAjustes();
+    pintarPanelDoc();
+    avisar("#aviso-doc", "Añadido.");
+  });
+}
+
+/* Recoge lo que hay escrito en el panel. Se llama al guardar y también al
+   cambiar de pestaña, para no perder nada por el camino. */
+function guardarPanelDoc() {
+  const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO);
+  if (!doc || !$("#panel-doc")) return;
+  if (doc.fijos) {
+    const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
+    $$("#panel-doc [data-fijo]").forEach(i => {
+      valores[i.dataset.fijo] = i.type === "checkbox" ? i.checked : i.value;
+    });
+  }
+  const extras = CFG.extras || (CFG.extras = {});
+  const mios = extras[doc.id] || {};
+  $$("#panel-doc [data-extra]").forEach(i => {
+    mios[i.dataset.extra] = i.type === "checkbox" ? i.checked : i.value;
+  });
+  extras[doc.id] = mios;
+}
+
+$("#btn-guardar-doc").addEventListener("click", () => {
+  guardarPanelDoc();
+  avisar("#aviso-doc",
+    guardarAjustes() === false ? "No se ha podido guardar." : "Guardado.");
+});
+
 /* ══════════════ copia de seguridad ══════════════ */
 
 $("#btn-exportar").addEventListener("click", () => {
   const copia = {
-    version: 1,
+    version: 2,
     empresa: CFG.empresa,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
+    valores_fijos_mtd: CFG.valores_fijos_mtd,
+    valores_fijos_cie: CFG.valores_fijos_cie,
+    extras: CFG.extras,
     expedientes: leer(CLAVE_EXPEDIENTES, []),
   };
   descargar("boletines-irve-copia.json",
@@ -540,10 +806,16 @@ $("#fichero-importar").addEventListener("change", async e => {
     }
     if (c.empresa) CFG.empresa = { ...CFG.empresa, ...c.empresa };
     if (c.tecnica) CFG.tecnica = { ...CFG.tecnica, ...c.tecnica };
+    if (c.valores_fijos_mtd)
+      CFG.valores_fijos_mtd = { ...CFG.valores_fijos_mtd, ...c.valores_fijos_mtd };
+    if (c.valores_fijos_cie)
+      CFG.valores_fijos_cie = { ...CFG.valores_fijos_cie, ...c.valores_fijos_cie };
+    if (c.extras) CFG.extras = { ...CFG.extras, ...c.extras };
     if (c.codigos_postales) CFG.codigos_postales = { ...CFG.codigos_postales, ...c.codigos_postales };
     if (Array.isArray(c.expedientes)) escribir(CLAVE_EXPEDIENTES, c.expedientes);
     guardarAjustes();
-    pintarConfigEmpresa(); pintarCodigosPostales(); pintarLocalidades();
+    pintarConfigEmpresa(); pintarPestanasDoc(); pintarPanelDoc();
+    pintarCodigosPostales(); pintarLocalidades();
     pintarExpedientes(); aplicarValoresTecnicos(CFG.tecnica); recalcular();
     avisar("#aviso-copia", "Copia restaurada.");
     $("#sin-empresa").hidden = !!(CFG.empresa.razon_social || "").trim();

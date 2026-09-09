@@ -67,6 +67,7 @@ python herramientas/rastrear.py docs/plantillas/*.pdf
 | `servidor.py`, `web/` | La versión de escritorio. **Su pantalla se quedó atrás** (le faltan campos que sí están en `docs/`). El motor sí está al día. Usa la del navegador. |
 | `config.json`, `prueba.json` | Tus datos y un expediente de prueba. **No se suben al repositorio.** Junto a ellos están `config.ejemplo.json` y `prueba.ejemplo.json`, que sí, con los datos en blanco. |
 | `publicar.bat` | Sube la aplicación a GitHub. Doble clic. |
+| `docs/plantillas/campos.json` | La lista de campos de cada impreso con su etiqueta, para poder elegirlos desde Configuración. |
 | `herramientas/` | Preparación de los impresos y comprobaciones. Solo se usa si cambia un impreso oficial. |
 | `empaquetar/` | Instalador y firma de código, por si algún día se vende. |
 | `CONSEJO-multicomunidad.md` | Cómo llevar esto a las otras comunidades. |
@@ -93,6 +94,27 @@ formulario, y las mismas 751 palabras en el CIE. La comprobación se repite con:
 ```bash
 python herramientas/comparar.py
 ```
+
+### Lo que pone en cada documento se elige desde la pantalla
+
+En **Configuración** hay una pestaña por impreso. Cada una trae dos cosas:
+
+- **Lo que la aplicación pone siempre**, ya relleno con lo de un punto de
+  recarga corriente: tipo de acometida, módulo, puesta a tierra, presupuesto,
+  qué documentación se adjunta... Se cambia ahí y se queda para los siguientes.
+- **Cualquier otro campo del impreso.** Se elige de una lista con buscador —que
+  dice lo que pone escrito al lado de cada campo y en qué página está— y se le
+  da el valor. Para una casilla, «sí» o «no».
+
+Así, cuando un expediente pida algo que la aplicación no rellena, **no hay que
+tocar el programa**.
+
+La lista de campos sale de `herramientas/indice_campos.py`, que recorre cada
+impreso y apunta el nombre del campo, su página y el texto que tiene al lado
+—que es lo único por lo que una persona puede reconocerlo—. En la solicitud
+encuentra rótulo para 165 de 175 campos; en el MTD solo para 52 de 1.631,
+porque allí los rótulos son dibujos y no texto, así que esos van por página y
+posición. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
 ### El esquema unifilar
 

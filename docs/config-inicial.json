@@ -285,7 +285,11 @@
   "ubicacion_centralizacion_modular": "X",
   "presupuesto_materiales": "5",
   "presupuesto_mano_obra": "5",
-  "presupuesto_total": "10"
+  "presupuesto_total": "10",
+  "adjunta_esquema_unifilar": true,
+  "adjunta_planos_planta": false,
+  "adjunta_croquis_trazado": false,
+  "adjunta_otros": false
  },
  "valores_fijos_cie": {
   "actuacion": "Nueva",

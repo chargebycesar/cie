@@ -375,7 +375,20 @@ export function mapaMtd(datos, cfg, tec, calc) {
     m["Texto" + (1590 + i)] = linea;
   });
 
-  return { mapa: m, casillas: { "Casilla de verificación69": true, "Casilla de verificación70": false } };
+  return {
+    mapa: m,
+    casillas: {
+      "Casilla de verificación69": true,
+      "Casilla de verificación70": false,
+      // "Documentación que se adjunta", última página. Venían marcadas en la
+      // plantilla, heredadas de otro trabajo; ahora salen porque se han
+      // configurado. Fila de arriba: unifilar y planos; abajo: croquis y otros.
+      "Casilla de verificación1613": f.adjunta_esquema_unifilar !== false,
+      "Casilla de verificación1614": f.adjunta_planos_planta !== false,
+      "Casilla de verificación1615": f.adjunta_croquis_trazado !== false,
+      "Casilla de verificación1616": f.adjunta_otros === true,
+    },
+  };
 }
 
 export function mapaAnexoIve(datos, cfg, tec, calc) {
@@ -630,6 +643,19 @@ export function celdasCie(datos, cfg, tec, calc) {
   };
 }
 
+/* Ajustes por documento: campos que el usuario ha elegido rellenar desde la
+   pantalla de Configuración, sin tocar el código. Van encima de lo que pone la
+   aplicación, porque si alguien los escribe ahí a mano es que los quiere así.
+   Un valor de sí/no es una casilla; cualquier otra cosa, texto. */
+export function aplicarExtras(partes, extras) {
+  if (!extras) return partes;
+  for (const [campo, valor] of Object.entries(extras)) {
+    if (valor === true || valor === false) partes.casillas[campo] = valor;
+    else if (t(valor) !== "") partes.mapa[campo] = t(valor);
+  }
+  return partes;
+}
+
 /* ══════════════ generar el expediente ══════════════ */
 
 const DOCUMENTOS = [
@@ -705,6 +731,8 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opcion
       else if (doc.tipo === "autorizacion") partes = mapaAutorizacion(datos, cfg);
       else partes = mapaAnexoGaraje(datos, cfg);
 
+      aplicarExtras(partes, (cfg.extras || {})[doc.archivo]);
+
       const r = await rellenarPdf(
         await cargarPlantilla(doc.archivo),
         partes.mapa, partes.casillas, cfg, partes.pistas, lib,
@@ -719,7 +747,8 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opcion
   // el CIE
   try {
     const celdas = {};
-    const crudas = celdasCie(datos, cfg, tec, calc);
+    const crudas = { ...celdasCie(datos, cfg, tec, calc),
+                     ...((cfg.extras || {}).CIE || {}) };
     for (const [k, v] of Object.entries(crudas)) celdas[k] = mayus(v, cfg);
     const cie = await generarCie(celdas, mayus(cups.texto, cfg), cargarPlantilla, lib);
     documentos.push({ nombre: "CIE.pdf", ok: true, bytes: cie.bytes,

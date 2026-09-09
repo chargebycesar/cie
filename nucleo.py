@@ -740,7 +740,18 @@ def mapa_mtd(datos, cfg, preset, calc):
         m[f"Texto{i}"] = linea
 
     # Casilla "MEMORIA REALIZADA POR INSTALADOR AUTORIZADO"
-    return m, {"Casilla de verificación69": True, "Casilla de verificación70": False}
+    return m, {
+        "Casilla de verificación69": True,
+        "Casilla de verificación70": False,
+        # "Documentacion que se adjunta", ultima pagina. Venian marcadas
+        # en la plantilla, heredadas de otro trabajo; ahora salen porque
+        # se han configurado. Arriba: unifilar y planos; abajo: croquis
+        # y otros.
+        "Casilla de verificación1613": fijos.get("adjunta_esquema_unifilar", True) is not False,
+        "Casilla de verificación1614": fijos.get("adjunta_planos_planta", True) is not False,
+        "Casilla de verificación1615": fijos.get("adjunta_croquis_trazado", True) is not False,
+        "Casilla de verificación1616": fijos.get("adjunta_otros", False) is True,
+    }
 
 
 # La memoria descriptiva del MTD son 23 renglones sueltos (Texto1590 a
@@ -1154,7 +1165,9 @@ def generar_cie(datos, cfg, preset, calc, carpeta):
     config.json se pone "cie_con_libreoffice": true, se cae al camino antiguo,
     que abre el .xls con LibreOffice.
     """
-    celdas = {k: mayus(v, cfg) for k, v in celdas_cie(datos, cfg, preset, calc).items()}
+    crudas = dict(celdas_cie(datos, cfg, preset, calc))
+    crudas.update((cfg.get("extras") or {}).get("CIE") or {})
+    celdas = {k: mayus(v, cfg) for k, v in crudas.items()}
     _valido, texto_cups = validar_cups(datos.get("cups"))
     pdf_destino = os.path.join(carpeta, "CIE.pdf")
 
@@ -1249,6 +1262,24 @@ DOCUMENTOS = [
 ]
 
 
+def aplicar_extras(mapa, casillas, extras):
+    """Ajustes por documento elegidos desde la pantalla de Configuracion.
+
+    Van encima de lo que pone la aplicacion, porque si alguien los escribe ahi
+    a mano es que los quiere asi. Un valor de si/no es una casilla; cualquier
+    otra cosa, texto.
+    """
+    if not extras:
+        return mapa, casillas
+    mapa, casillas = dict(mapa), dict(casillas)
+    for campo, valor in extras.items():
+        if isinstance(valor, bool):
+            casillas[campo] = valor
+        elif t(valor) != "":
+            mapa[campo] = t(valor)
+    return mapa, casillas
+
+
 def generar(datos, aplanar_mtd=True):
     """Genera el expediente entero.
 
@@ -1331,6 +1362,8 @@ def generar(datos, aplanar_mtd=True):
             mapa, casillas = mapa_autorizacion(datos, cfg)
         else:
             mapa, casillas = mapa_anexo_garaje(datos, cfg)
+        mapa, casillas = aplicar_extras(mapa, casillas,
+                                        (cfg.get("extras") or {}).get(plantilla))
         pistas = PISTAS_ANEXO_GARAJE if tipo == "anexo_garaje" else None
         try:
             escritos, faltan = rellenar_pdf(origen, mapa, destino, casillas,
