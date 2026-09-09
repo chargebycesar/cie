@@ -9,7 +9,14 @@ import { mayus } from "./util.js";
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
 /* Saca del documento los campos que cumplan la condición: fuera de las páginas
- * y fuera del formulario. */
+ * y fuera del formulario.
+ *
+ * No se usa form.removeField() de pdf-lib: ese, para localizar la anotación,
+ * pide el dibujo del campo, y en el MTD 1.611 de los 1.631 campos no tienen
+ * ninguno -son huecos vacíos que el visor dibuja al vuelo-. Con el primero que
+ * se encuentra se para y el documento se queda a medias. Aquí se quitan las
+ * anotaciones de la página por su objeto, que es lo que hace falta, y luego el
+ * campo de la lista del formulario. */
 function quitarCampos(doc, form, lib, sobra) {
   const paginas = doc.getPages();
   let quitados = 0;
@@ -24,7 +31,9 @@ function quitarCampos(doc, form, lib, sobra) {
         if (suyos.has(doc.context.lookup(anotaciones.get(i)))) anotaciones.remove(i);
       }
     }
-    form.removeField(campo);
+    try {
+      form.acroForm.removeField(campo.acroField);
+    } catch (e) { /* si ya no estaba en la lista, mejor */ }
     quitados += 1;
   }
   return quitados;

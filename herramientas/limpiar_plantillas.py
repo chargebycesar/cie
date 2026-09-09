@@ -68,6 +68,57 @@ def poner(doc, xref, k, v):
         return False
 
 
+def lineas_horizontales(pagina):
+    """Las rayas horizontales dibujadas en la pagina, con su tramo de x."""
+    ys = []
+    for dib in pagina.get_drawings():
+        for it in dib["items"]:
+            if it[0] == "l" and abs(it[1].y - it[2].y) < 0.6:
+                ys.append((min(it[1].x, it[2].x), max(it[1].x, it[2].x), it[1].y))
+            elif it[0] == "re":
+                r = it[1]
+                if r.height < 1.5:      # una raya dibujada como rectangulo fino
+                    ys.append((r.x0, r.x1, (r.y0 + r.y1) / 2))
+                else:
+                    ys.append((r.x0, r.x1, r.y0))
+                    ys.append((r.x0, r.x1, r.y1))
+    return ys
+
+
+def centrar_en_su_casilla(doc, pagina):
+    """Sube los campos que el impreso dejo descolgados dentro de su casilla.
+
+    En el anexo IVE, los tres valores de la derecha -potencia maxima, esquema y
+    numero de puntos- estan puestos pegados al fondo de su casilla, y el de
+    numero de puntos doce puntos por debajo del centro, asi que el dato sale
+    abajo con un hueco grande encima. Los rotulos de esas casillas estan en la
+    columna de al lado, no dentro, asi que el sitio del dato es el centro.
+
+    Ojo con generalizarlo: en el esquema unifilar los campos tambien van bajos,
+    pero ahi es a proposito, porque el rotulo esta dentro de la casilla, arriba.
+    Por eso esto se aplica solo al impreso donde hace falta.
+    """
+    movidos = 0
+    ys = lineas_horizontales(pagina)
+    for w in pagina.widgets():
+        r = w.rect
+        cx = (r.x0 + r.x1) / 2
+        arriba = [y for x0, x1, y in ys if x0 - 2 <= cx <= x1 + 2 and y <= r.y0 + 1]
+        abajo = [y for x0, x1, y in ys if x0 - 2 <= cx <= x1 + 2 and y >= r.y1 - 1]
+        if not arriba or not abajo:
+            continue
+        alta, baja = max(arriba), min(abajo)
+        if not (15 <= baja - alta <= 45):
+            continue
+        desvio = (r.y0 + r.y1) / 2 - (alta + baja) / 2
+        if abs(desvio) <= 4:
+            continue
+        w.rect = pymupdf.Rect(r.x0, r.y0 - desvio, r.x1, r.y1 - desvio)
+        w.update()
+        movidos += 1
+    return movidos
+
+
 def vaciar_dibujo(doc, xref):
     """Borra el texto dibujado de un campo dejando el objeto en su sitio.
 
@@ -193,6 +244,53 @@ def limpiar(archivo, escritos):
                 poner(doc, x, "Subtype", "/Form")
                 remendadas += 1
 
+        # 0b) Campos del impreso que tienen que tapar lo que hay debajo.
+        #     En la ultima pagina del MTD, el impreso lleva dibujado el aviso de
+        #     proteccion de datos antiguo y encima un campo con el nuevo. El
+        #     campo no tapa nada -su dibujo solo traza el recuadro y escribe-,
+        #     asi que mientras es un formulario el visor lo disimula, pero al
+        #     aplanar salen los dos textos uno encima del otro. Y el de abajo no
+        #     se puede borrar: no es texto, son curvas, como el resto de los
+        #     rotulos del MTD.
+        #
+        #     Se reconocen porque el propio impreso les pone color de borde
+        #     (/MK /BC): son recuadros que van solos, no huecos para escribir.
+        #     A esos se les pinta el fondo blanco delante de su dibujo.
+        tapadores = 0
+        for pagina in doc:
+            for w in pagina.widgets():
+                if not (w.field_value or "").strip():
+                    continue
+                _, mk = clave(doc, w.xref, "MK")
+                if not mk or "/BC" not in mk or "/BG" in mk:
+                    continue
+                tipo, valor = clave(doc, w.xref, "AP/N")
+                if tipo != "xref":
+                    continue
+                x = int(valor.split()[0])
+                try:
+                    cuerpo = doc.xref_stream(x)
+                except Exception:
+                    continue
+                if cuerpo.lstrip().startswith(b"1 1 1 rg"):
+                    continue                    # ya lo tiene
+                ancho = w.rect.width
+                alto = w.rect.height
+                fondo = ("1 1 1 rg 0 0 %.2f %.2f re f" % (ancho, alto)
+                         + chr(10)).encode("latin-1")
+                try:
+                    doc.update_stream(x, fondo + cuerpo)
+                    poner(doc, w.xref, "MK/BG", "[ 1 1 1 ]")
+                    tapadores += 1
+                except Exception:
+                    pass
+
+        # 0c) Campos descolgados dentro de su casilla (solo el anexo IVE)
+        descolgados = 0
+        if archivo == "ANEXO_IVE.pdf":
+            for pagina in doc:
+                descolgados += centrar_en_su_casilla(doc, pagina)
+
         # 2a) Anotaciones sobrantes pegadas a la pagina. Son los recuadros del
         #     trabajo anterior: ya no son campos de formulario (nadie los
         #     nombra), pero siguen en la lista de anotaciones de la pagina y
@@ -308,7 +406,9 @@ def limpiar(archivo, escritos):
 
     antes = os.path.getsize(ruta)
     shutil.move(tmp, ruta)
-    print(f"  {archivo:<18} {remendadas:>2} apariencias · {sobrantes:>3} recuadros · "
+    print(f"  {archivo:<18} {remendadas:>2} apariencias · {tapadores} tapados · "
+          f"{descolgados} recolocados · "
+          f"{sobrantes:>3} recuadros · "
           f"{sueltos:>3} sueltos · {vaciados:>3} vaciados · {firmas} firmas · "
           f"{antes/1024:.0f} -> {os.path.getsize(ruta)/1024:.0f} KB")
 
