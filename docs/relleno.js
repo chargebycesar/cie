@@ -8,6 +8,55 @@ import { mayus } from "./util.js";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
+/* Ningún dato de estos impresos necesita letra más grande que esto, ni se lee
+   por debajo de esto otro. */
+const TAM_MAXIMO = 9;
+const TAM_MINIMO = 4;
+
+/* Ajusta la letra de los campos que vienen con tamaño «automático».
+ *
+ * Son trece en total, y en ellos la librería elige el tamaño por su cuenta:
+ * cuando el recuadro es alto se va a una letra enorme y el dato se sale por los
+ * lados. En el esquema unifilar, «BUFALA TECH SL» salía a lo ancho del papel.
+ * Aquí se le pone un tamaño que quepa de verdad: se mide lo más largo que hay
+ * que meter en una línea -la palabra más larga si el campo admite varias- y se
+ * reduce hasta que entre. Los campos con tamaño puesto por el impreso no se
+ * tocan. */
+function ajustarTamano(campo, texto, helvetica) {
+  const widgets = campo.acroField.getWidgets();
+  if (!widgets.length || !texto) return;
+  // El tamaño se lee de la apariencia por defecto del campo: pdf-lib 1.17.1 no
+  // tiene getFontSize(), solo setFontSize().
+  let da = "";
+  try { da = campo.acroField.getDefaultAppearance() || ""; } catch (e) { return; }
+  const puesto = /([\d.]+)\s+Tf/.exec(da);
+  if (!puesto || Number(puesto[1]) > 0) return;   // el impreso ya dice el tamaño
+  let tam;
+
+  const caja = widgets[0].getRectangle();
+  const ancho = Math.max(6, caja.width - 4);
+  const alto = Math.max(6, caja.height - 2);
+  let multi = false;
+  try { multi = campo.isMultiline(); } catch (e) { /* no todos lo dicen */ }
+
+  tam = Math.min(TAM_MAXIMO, multi ? TAM_MAXIMO : alto);
+  const piezas = multi ? texto.split(/\s+/).filter(Boolean) : [texto];
+  let mayor = 1;
+  for (const p of piezas) {
+    try { mayor = Math.max(mayor, helvetica.widthOfTextAtSize(p, tam)); }
+    catch (e) { return; }               // alguna letra que la fuente no tiene
+  }
+  if (mayor > ancho) tam = tam * ancho / mayor;
+  tam = Math.max(TAM_MINIMO, Math.floor(tam * 10) / 10);
+  // El tamaño va en el recuadro, no en el campo: la librería mira primero el
+  // del recuadro y solo si no lo hay baja al del campo. Puesto en el campo lo
+  // ignora y se inventa uno para llenar el hueco, que es el problema de raíz.
+  for (const w of widgets) {
+    try { w.setDefaultAppearance(`/Helv ${tam} Tf 0 g`); } catch (e) { /* ya está */ }
+  }
+  try { campo.setFontSize(tam); } catch (e) { /* si no se deja, da igual */ }
+}
+
 /* Saca del documento los campos que cumplan la condición: fuera de las páginas
  * y fuera del formulario.
  *
@@ -106,6 +155,7 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
         // blanco se comía las líneas de las tablas del impreso. Y el /MK del
         // campo no se toca: ahí vive el giro de 90° de las celdas estrechas.
         campo.setText(texto);
+        ajustarTamano(campo, texto, helvetica);
       } else if (pistas && pistas[nombre]) {
         // Hueco que rellena el cliente: se le deja escrito en gris qué poner.
         campo.setText(mayus(pistas[nombre], cfg));

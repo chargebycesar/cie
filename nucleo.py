@@ -476,6 +476,41 @@ def _quitar_no_imprimibles(doc):
     return quitados
 
 
+# Ningun dato de estos impresos necesita letra mas grande que esto, ni se lee
+# por debajo de esto otro.
+TAM_MAXIMO = 9
+TAM_MINIMO = 4
+
+
+def _ajustar_tamano(w, texto):
+    """Pone tamano de letra a los campos que vienen con tamano "automatico".
+
+    Son trece en total, y en ellos el visor elige por su cuenta: cuando el
+    recuadro es alto se va a una letra enorme y el dato se sale por los lados.
+    En el esquema unifilar, "BUFALA TECH SL" salia a lo ancho del papel. Aqui
+    se mide lo mas largo que hay que meter en una linea -la palabra mas larga
+    si el campo admite varias- y se reduce hasta que entre. Los campos con
+    tamano puesto por el impreso no se tocan.
+    """
+    if w.text_fontsize:
+        return                      # el impreso ya dice de que tamano va
+    ancho = max(6.0, w.rect.width - 4)
+    alto = max(6.0, w.rect.height - 2)
+    multi = bool(w.field_flags & 4096)          # bit 13: varias lineas
+    tam = min(TAM_MAXIMO, TAM_MAXIMO if multi else alto)
+    piezas = texto.split() if multi else [texto]
+    mayor = 1.0
+    for pieza in piezas:
+        try:
+            mayor = max(mayor, pymupdf.get_text_length(
+                pieza, fontname="helv", fontsize=tam))
+        except Exception:  # noqa: BLE001
+            return
+    if mayor > ancho:
+        tam = tam * ancho / mayor
+    w.text_fontsize = max(TAM_MINIMO, int(tam * 10) / 10)
+
+
 def _quitar_campos_vacios(doc):
     """Saca del documento los campos que se quedan sin texto.
 
@@ -529,6 +564,7 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
                     # pendiente, pero ese blanco se comia las lineas de las
                     # tablas del impreso al aplanarlo.
                     w.field_value = valor
+                    _ajustar_tamano(w, valor)
                     w.update()
                 elif (pistas or {}).get(nombre):
                     # Hueco que rellena el cliente: se le deja escrito en gris

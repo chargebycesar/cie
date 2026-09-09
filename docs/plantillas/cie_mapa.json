@@ -541,11 +541,11 @@
   },
   "S16": {
    "pagina": 0,
-   "x": 460.24,
+   "x": 471.2,
    "linea_base": 236.53,
    "tam": 7.41,
    "negrita": false,
-   "alineacion": "izquierda"
+   "alineacion": "centro"
   },
   "U33": {
    "pagina": 0,
