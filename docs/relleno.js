@@ -8,24 +8,15 @@ import { mayus } from "./util.js";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
-/* El MTD trae dos botones ("Limpiar Campos" e "Imprimir") y el aviso amarillo
- * de cabecera marcados como "no imprimir". Al darle al botón de imprimir no
- * salen, y el MTD que aprueba la OCA tampoco los lleva. Se quitan aquí para no
- * tener que pasar por el trámite de imprimir a mano. */
-function quitarNoImprimibles(doc, form, lib) {
-  const { PDFName } = lib;
+/* Saca del documento los campos que cumplan la condición: fuera de las páginas
+ * y fuera del formulario. */
+function quitarCampos(doc, form, lib, sobra) {
   const paginas = doc.getPages();
   let quitados = 0;
 
   for (const campo of form.getFields()) {
-    const widgets = campo.acroField.getWidgets();
-    const seImprime = widgets.some(w => {
-      const f = w.dict.get(PDFName.of("F"));
-      return f && (f.asNumber() & 4);
-    });
-    if (seImprime) continue;
-
-    const suyos = new Set(widgets.map(w => w.dict));
+    if (!sobra(campo)) continue;
+    const suyos = new Set(campo.acroField.getWidgets().map(w => w.dict));
     for (const pagina of paginas) {
       const anotaciones = pagina.node.Annots();
       if (!anotaciones) continue;
@@ -37,6 +28,34 @@ function quitarNoImprimibles(doc, form, lib) {
     quitados += 1;
   }
   return quitados;
+}
+
+/* El MTD trae dos botones ("Limpiar Campos" e "Imprimir") y el aviso amarillo
+ * de cabecera marcados como "no imprimir". Al darle al botón de imprimir no
+ * salen, y el MTD que aprueba la OCA tampoco los lleva. Se quitan aquí para no
+ * tener que pasar por el trámite de imprimir a mano. */
+function quitarNoImprimibles(doc, form, lib) {
+  const { PDFName } = lib;
+  return quitarCampos(doc, form, lib, campo =>
+    !campo.acroField.getWidgets().some(w => {
+      const f = w.dict.get(PDFName.of("F"));
+      return f && (f.asNumber() & 4);
+    }));
+}
+
+/* Un campo vacío de estos impresos no es transparente: su dibujo es un
+ * rectángulo blanco que tapa lo que hay debajo. En la versión editable da
+ * igual, porque el visor lo redibuja; pero al aplanar queda estampado y se
+ * come la rejilla de las tablas, que sale a trozos. Como un campo sin texto no
+ * aporta nada al documento impreso, se quita entero antes de aplanar. */
+function quitarVacios(doc, form, lib) {
+  return quitarCampos(doc, form, lib, campo => {
+    try {
+      if (typeof campo.getText === "function") return !(campo.getText() || "").trim();
+      if (typeof campo.isChecked === "function") return !campo.isChecked();
+    } catch (e) { /* si no se puede leer, mejor dejarlo */ }
+    return false;
+  });
 }
 
 export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opciones) {
@@ -71,15 +90,11 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
     const texto = mayus(valor, cfg);
     try {
       if (texto) {
+        // Solo el texto, sin tocar el fondo. Antes se pintaba de blanco para
+        // que un campo ya relleno no pareciera un hueco pendiente, pero ese
+        // blanco se comía las líneas de las tablas del impreso. Y el /MK del
+        // campo no se toca: ahí vive el giro de 90° de las celdas estrechas.
         campo.setText(texto);
-        // Fondo blanco en lo que ya va escrito: el sombreado del impreso marca
-        // lo que queda por rellenar. Ojo, el widget no tiene setBackgroundColor:
-        // hay que pasar por sus características de apariencia.
-        for (const w of campo.acroField.getWidgets()) {
-          try {
-            w.getOrCreateAppearanceCharacteristics().setBackgroundColor([1, 1, 1]);
-          } catch (e) { /* si el visor no lo admite, se queda como estaba */ }
-        }
       } else if (pistas && pistas[nombre]) {
         // Hueco que rellena el cliente: se le deja escrito en gris qué poner.
         campo.setText(mayus(pistas[nombre], cfg));
@@ -104,22 +119,20 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
 
   if (opciones && opciones.quitarBotones) quitarNoImprimibles(doc, form, lib);
 
-  // save() vuelve a generar las apariencias por su cuenta, asi que si algo
-  // falló arriba volvería a fallar aquí y se perdería el documento entero.
-  const salida = { bytes: await doc.save({ updateFieldAppearances: false }),
-                   escritos, noEncontrados };
-
-  // La versión impresa: lo que saldría al pulsar el botón Imprimir y elegir
-  // "imprimir a PDF". Se saca del mismo documento, sin volver a abrirlo, que
-  // abrir el MTD otra vez cuesta varios segundos. Si fallase, se pierde solo
-  // esta versión: la otra ya está hecha.
-  if (opciones && opciones.tambienImpresa) {
+  // El documento aplanado es lo que sale al pulsar Imprimir y elegir "imprimir
+  // a PDF": los datos quedan fijos y ya no hay formulario. Si el aplanado
+  // fallase se entrega el documento con sus campos, que es peor pero es algo.
+  if (opciones && opciones.aplanar) {
     try {
+      quitarVacios(doc, form, lib);
       form.flatten();
-      salida.impresa = await doc.save({ updateFieldAppearances: false });
     } catch (e) {
-      salida.avisoImpresa = String(e).slice(0, 140);
+      noEncontrados.push(`(no se ha podido aplanar: ${String(e).slice(0, 90)})`);
     }
   }
-  return salida;
+
+  // save() vuelve a generar las apariencias por su cuenta, asi que si algo
+  // falló arriba volvería a fallar aquí y se perdería el documento entero.
+  return { bytes: await doc.save({ updateFieldAppearances: false }),
+           escritos, noEncontrados };
 }

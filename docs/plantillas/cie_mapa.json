@@ -61,11 +61,11 @@
   },
   "R6": {
    "pagina": 0,
-   "x": 440.1,
+   "x": 490.49,
    "linea_base": 120.45,
    "tam": 8.89,
    "negrita": false,
-   "alineacion": "izquierda"
+   "alineacion": "centro"
   },
   "B7": {
    "pagina": 0,
@@ -2914,7 +2914,7 @@
   "A42": {
    "pagina": 0,
    "x": 19.4,
-   "linea_base": 575.1,
+   "linea_base": 568.38,
    "tam": 7.41,
    "negrita": false,
    "alineacion": "izquierda",

@@ -20,7 +20,7 @@ const base = JSON.parse(fs.readFileSync(process.argv[2] || path.join(RAIZ, 'prue
 const casos = {
   'formulario vacío del todo': {},
   'sin CUPS': { ...base, cups: '' },
-  'CUPS mal': { ...base, cups: 'ES0031000000000000XX' },
+  'CUPS mal': { ...base, cups: 'ES0021000000000000XX' },
   'NIF mal': { ...base, titular_nif: '12345678A' },
   'sin longitud': { ...base, longitud: '' },
   'longitud 0': { ...base, longitud: '0' },

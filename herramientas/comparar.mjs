@@ -16,7 +16,7 @@ async function cargar(nombre, como) {
   return new Uint8Array(fs.readFileSync(p));
 }
 
-const r = await generarExpediente(datos, cfg, cargar, lib);
+const r = await generarExpediente(datos, cfg, cargar, lib, { aplanar: false });
 const destino = path.join(process.argv[4] || path.join(RAIZ, 'salida'), 'js');
 fs.mkdirSync(destino, { recursive: true });
 for (const d of r.documentos) {

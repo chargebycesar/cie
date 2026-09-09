@@ -168,6 +168,31 @@ def limpiar(archivo, escritos):
                                     pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
                     casillas.update(cadena_hasta_pagina(doc, w.xref))
 
+        # 0) Apariencias mal formadas. En el MTD hay tres campos de la
+        #    cabecera oficial ("Direccion General de", "Etiqueta de Registro",
+        #    "Comunidad de Madrid") cuyo dibujo no declara /Type /XObject
+        #    /Subtype /Form. Los visores lo perdonan mientras siga siendo un
+        #    campo de formulario, pero en cuanto se aplana el documento ese
+        #    dibujo pasa al contenido de la pagina y ya no vale: desaparece.
+        #    Se completa aqui, que es un arreglo del impreso, no del relleno.
+        remendadas = 0
+        for pagina in doc:
+            for w in pagina.widgets():
+                tipo, valor = clave(doc, w.xref, "AP/N")
+                if tipo != "xref":
+                    continue
+                x = int(valor.split()[0])
+                objeto = ""
+                try:
+                    objeto = doc.xref_object(x, compressed=False)
+                except Exception:
+                    continue
+                if "/Subtype" in objeto:
+                    continue
+                poner(doc, x, "Type", "/XObject")
+                poner(doc, x, "Subtype", "/Form")
+                remendadas += 1
+
         # 2a) Anotaciones sobrantes pegadas a la pagina. Son los recuadros del
         #     trabajo anterior: ya no son campos de formulario (nadie los
         #     nombra), pero siguen en la lista de anotaciones de la pagina y
@@ -283,8 +308,8 @@ def limpiar(archivo, escritos):
 
     antes = os.path.getsize(ruta)
     shutil.move(tmp, ruta)
-    print(f"  {archivo:<18} {sobrantes:>3} recuadros · {sueltos:>3} sueltos · "
-          f"{vaciados:>3} vaciados · {firmas} firmas · "
+    print(f"  {archivo:<18} {remendadas:>2} apariencias · {sobrantes:>3} recuadros · "
+          f"{sueltos:>3} sueltos · {vaciados:>3} vaciados · {firmas} firmas · "
           f"{antes/1024:.0f} -> {os.path.getsize(ruta)/1024:.0f} KB")
 
 

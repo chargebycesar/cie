@@ -38,6 +38,12 @@ def campos(ruta):
                 for p in doc for w in p.widgets()}
 
 
+def palabras(ruta):
+    with contextlib.redirect_stderr(io.StringIO()):
+        doc = pymupdf.open(ruta)
+        return [x for p in doc for x in p.get_text().split()]
+
+
 def palabras_cie(ruta):
     identificador = re.compile(r"^\d{16}[A-Z]{2}$")
     texto = pymupdf.open(ruta)[0].get_text().split()
@@ -55,7 +61,7 @@ def main():
 
     print("Generando con el motor de Python...")
     with open(datos, encoding="utf-8") as fh:
-        resultado = nucleo.generar(json.load(fh))
+        resultado = nucleo.generar(json.load(fh), aplanar_mtd=False)
     carpeta_py = resultado["carpeta"]
 
     print("Generando con el motor del navegador...")
@@ -77,6 +83,16 @@ def main():
             total += 1
             continue
         A, B = campos(a), campos(b)
+        if not A and not B:
+            # Documento aplanado: ya no tiene formulario, asi que se comparan
+            # las palabras que quedan dibujadas en las paginas.
+            pa, pb = palabras(a), palabras(b)
+            dif = sorted(set(pa) ^ set(pb))
+            total += len(dif)
+            print(f"  {nombre[:40]:<42} {len(pa):>4} palabras · {len(dif)} diferencias")
+            if dif:
+                print(f"      {dif[:8]}")
+            continue
         dif = [k for k in set(A) | set(B)
                if A.get(k, "").strip() != B.get(k, "").strip()]
         total += len(dif)

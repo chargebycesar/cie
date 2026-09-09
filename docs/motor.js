@@ -273,6 +273,16 @@ export function mapaMtd(datos, cfg, tec, calc) {
     Texto32: f.igm_nominal,
     Texto33: f.igm_poder_corte,
     Texto34: f.num_derivaciones,
+    // Presupuesto. Es obligatorio en el impreso. Dos columnas -Instalaciones
+    // Interior y TOTAL- por tres filas: materiales, mano de obra y total.
+    Texto217: f.presupuesto_materiales, Texto219: f.presupuesto_materiales,
+    Texto224: f.presupuesto_mano_obra, Texto226: f.presupuesto_mano_obra,
+    Texto231: f.presupuesto_total, Texto233: f.presupuesto_total,
+    // Datos tecnicos del punto de medida. Venian puestos en la plantilla,
+    // heredados de otro trabajo; ahora salen porque se han configurado.
+    Texto252: f.num_suministros_monofasicos,
+    Texto259: f.emplazamiento_planta_baja,
+    Texto268: f.ubicacion_centralizacion_modular,
     Texto36: f.modulo_tipo,
     Texto37: f.modulo_situacion,
     Texto38: tec.iga_texto,
@@ -613,7 +623,9 @@ export function celdasCie(datos, cfg, tec, calc) {
     E32: e.instalador_nombre, S32: e.instalador_nif,
     D33: e.tipo_via, H33: e.nombre_via, Q33: e.numero, U33: e.cp,
     C34: e.municipio, I34: e.provincia, M34: e.telefono, R34: e.email,
-    L38: f.documentacion, A40: f.rd1890, A42: f.itc_bt_51, B43: corta,
+    L38: f.documentacion, A40: f.rd1890, A42: f.itc_bt_51,
+    // El impreso ya trae escrito "En": aqui va el lugar y la fecha
+    B43: [t(e.lugar_firma) || t(e.municipio), corta].filter(Boolean).join(" A "),
     S51: f.resistencia_tierra, S52: f.resistencia_aislamiento, S53: f.otras_verificaciones,
   };
 }
@@ -622,9 +634,10 @@ export function celdasCie(datos, cfg, tec, calc) {
 
 const DOCUMENTOS = [
   // El MTD lleva dos botones y un aviso que el propio impreso marca como
-  // "no imprimir": se quitan, y además se saca la versión impresa.
+  // "no imprimir": se quitan. Y se entrega aplanado, que es como sale al
+  // pulsar Imprimir, con los datos ya fijos.
   { archivo: "MTD.pdf", nombre: "MTD - Memoria Tecnica de Diseno.pdf", tipo: "mtd",
-    quitarBotones: true, tambienImpresa: true },
+    quitarBotones: true, aplanar: true },
   { archivo: "ANEXO_IVE.pdf", nombre: "Anexo IVE - declaracion ITC-BT-52.pdf", tipo: "anexo_ive" },
   { archivo: "UNIFILAR.pdf", nombre: "Esquema unifilar.pdf", tipo: "unifilar" },
   { archivo: "SOLICITUD.pdf", nombre: "Solicitud de inscripcion BT-1134F1.pdf", tipo: "solicitud" },
@@ -632,7 +645,12 @@ const DOCUMENTOS = [
   { archivo: "ANEXO_GARAJE.pdf", nombre: "Anexo - inspeccion periodica del garaje.pdf", tipo: "anexo_garaje" },
 ];
 
-export async function generarExpediente(datos, cfg, cargarPlantilla, lib) {
+/* `opciones.aplanar = false` entrega el MTD con sus campos en vez de aplanado.
+   Solo lo usa herramientas/comparar.py: los dos motores aplanan con librerias
+   distintas y el dibujo no sale byte a byte igual (Python pierde algun acento
+   y recorta alguna palabra larga), asi que la comparacion se hace antes. */
+export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opciones) {
+  const aplanarMtd = !(opciones && opciones.aplanar === false);
   const tec = valoresTecnicos(datos, cfg);
   const calc = calcular(datos, tec, cfg);
   const avisos = [...calc.avisos];
@@ -690,15 +708,9 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib) {
       const r = await rellenarPdf(
         await cargarPlantilla(doc.archivo),
         partes.mapa, partes.casillas, cfg, partes.pistas, lib,
-        { quitarBotones: doc.quitarBotones, tambienImpresa: doc.tambienImpresa });
+        { quitarBotones: doc.quitarBotones, aplanar: doc.aplanar && aplanarMtd });
       documentos.push({ nombre: doc.nombre, ok: true, bytes: r.bytes,
                         campos: r.escritos, faltan: r.noEncontrados });
-      if (r.impresa) {
-        documentos.push({
-          nombre: doc.nombre.replace(/\.pdf$/, " (version impresa).pdf"),
-          ok: true, impresa: true, bytes: r.impresa,
-        });
-      }
     } catch (err) {
       documentos.push({ nombre: doc.nombre, ok: false, error: String(err).slice(0, 160) });
     }

@@ -36,7 +36,8 @@
   "dif_clase": "A",
   "fusible_seguridad": "63",
   "tipo_instalacion_di": "BANDJ.",
-  "tipo_instalacion_circuito": "S.T.C."
+  "tipo_instalacion_circuito": "S.T.C.",
+  "plaza_planta": "-1"
  },
  "por_seccion": {
   "4": {
@@ -278,7 +279,13 @@
   "modulo_situacion": "EN CUARTO DE CENTRALIZACIÓN",
   "tierra_tipo": "Picas",
   "tierra_electrodos": "1",
-  "tierra_linea_enlace": "N/A"
+  "tierra_linea_enlace": "N/A",
+  "num_suministros_monofasicos": "1",
+  "emplazamiento_planta_baja": "X",
+  "ubicacion_centralizacion_modular": "X",
+  "presupuesto_materiales": "5",
+  "presupuesto_mano_obra": "5",
+  "presupuesto_total": "10"
  },
  "valores_fijos_cie": {
   "actuacion": "Nueva",

@@ -476,8 +476,34 @@ def _quitar_no_imprimibles(doc):
     return quitados
 
 
+def _quitar_campos_vacios(doc):
+    """Saca del documento los campos que se quedan sin texto.
+
+    Un campo vacio de estos impresos no es transparente: su dibujo es un
+    rectangulo blanco que tapa lo que hay debajo. En la version editable da
+    igual, porque el visor lo redibuja; pero al aplanar queda estampado y se
+    come la rejilla de las tablas, que sale a trozos. Como un campo sin texto
+    no aporta nada al documento impreso, se quita entero.
+    """
+    quitados = 0
+    for page in doc:
+        for w in list(page.widgets()):
+            if w.field_type in (pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
+                                pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
+                if (w.field_value or "") not in ("", "Off", False, None):
+                    continue
+            elif (w.field_value or "").strip():
+                continue
+            try:
+                page.delete_widget(w)
+                quitados += 1
+            except Exception:  # noqa: BLE001
+                pass
+    return quitados
+
+
 def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
-                 quitar_botones=False):
+                 quitar_botones=False, aplanar=False):
     """
     Escribe los valores de `mapa` (nombre_campo -> texto) en el PDF plantilla y
     marca o desmarca las casillas de `casillas` (nombre -> True/False).
@@ -498,11 +524,11 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
             elif nombre in mapa:
                 valor = mayus(mapa[nombre], cfg)
                 if valor:
+                    # Solo el texto, sin tocar el fondo. Antes se pintaba de
+                    # blanco para que un campo relleno no pareciera un hueco
+                    # pendiente, pero ese blanco se comia las lineas de las
+                    # tablas del impreso al aplanarlo.
                     w.field_value = valor
-                    # Fondo blanco en lo que ya va escrito: el sombreado de los
-                    # impresos marca lo que queda por rellenar, y un campo que
-                    # ya lleva su dato no debe parecer un hueco pendiente.
-                    w.fill_color = (1, 1, 1)
                     w.update()
                 elif (pistas or {}).get(nombre):
                     # Hueco que rellena el cliente: se le deja escrito en gris
@@ -536,6 +562,12 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
 
     if quitar_botones:
         _quitar_no_imprimibles(doc)
+
+    if aplanar:
+        _quitar_campos_vacios(doc)
+        # bake() pasa los campos al contenido de la pagina: es lo que hace el
+        # visor al imprimir a PDF. Los datos quedan fijos y ya no hay formulario.
+        doc.bake(annots=False, widgets=True)
 
     doc.set_metadata({"title": os.path.basename(destino),
                       "producer": "Boletines IRVE Madrid"})
@@ -590,6 +622,21 @@ def mapa_mtd(datos, cfg, preset, calc):
         "Texto32": fijos["igm_nominal"],
         "Texto33": fijos["igm_poder_corte"],
         "Texto34": fijos["num_derivaciones"],
+        # Presupuesto. Es obligatorio en el impreso. Dos columnas
+        # -Instalaciones Interior y TOTAL- por tres filas: materiales,
+        # mano de obra y total.
+        "Texto217": fijos.get("presupuesto_materiales", ""),
+        "Texto219": fijos.get("presupuesto_materiales", ""),
+        "Texto224": fijos.get("presupuesto_mano_obra", ""),
+        "Texto226": fijos.get("presupuesto_mano_obra", ""),
+        "Texto231": fijos.get("presupuesto_total", ""),
+        "Texto233": fijos.get("presupuesto_total", ""),
+        # Datos tecnicos del punto de medida. Venian puestos en la
+        # plantilla, heredados de otro trabajo; ahora salen porque se
+        # han configurado.
+        "Texto252": fijos.get("num_suministros_monofasicos", ""),
+        "Texto259": fijos.get("emplazamiento_planta_baja", ""),
+        "Texto268": fijos.get("ubicacion_centralizacion_modular", ""),
         "Texto36": fijos["modulo_tipo"],
         "Texto37": fijos["modulo_situacion"],
         "Texto38": preset["iga_texto"],
@@ -1081,7 +1128,10 @@ def celdas_cie(datos, cfg, preset, calc):
         "L38": f["documentacion"],
         "A40": f["rd1890"],
         "A42": f["itc_bt_51"],
-        "B43": d.strftime("%d/%m/%Y"),
+        # El impreso ya trae escrito "En": aqui va el lugar y la fecha
+        "B43": " A ".join(x for x in [t(e.get("lugar_firma"))
+                                      or t(e.get("municipio")),
+                                      d.strftime("%d/%m/%Y")] if x),
         "S51": f["resistencia_tierra"],
         "S52": f["resistencia_aislamiento"],
         "S53": f["otras_verificaciones"],
@@ -1188,17 +1238,24 @@ def _generar_cie_con_libreoffice(datos, cfg, preset, calc, carpeta,
 # --------------------------------------------------------------------------
 
 # (plantilla, nombre de salida, tipo, siempre, quitar los botones del impreso)
+# plantilla, nombre de salida, tipo, siempre, quitar botones, aplanar
 DOCUMENTOS = [
-    ("MTD.pdf", "MTD - Memoria Tecnica de Diseno.pdf", "mtd", True, True),
-    ("ANEXO_IVE.pdf", "Anexo IVE - declaracion ITC-BT-52.pdf", "anexo_ive", True, False),
-    ("UNIFILAR.pdf", "Esquema unifilar.pdf", "unifilar", True, False),
-    ("SOLICITUD.pdf", "Solicitud de inscripcion BT-1134F1.pdf", "solicitud", True, False),
-    ("AUTORIZACION.pdf", "Autorizacion del titular al instalador.pdf", "autorizacion", True, False),
-    ("ANEXO_GARAJE.pdf", "Anexo - inspeccion periodica del garaje.pdf", "anexo_garaje", False, False),
+    ("MTD.pdf", "MTD - Memoria Tecnica de Diseno.pdf", "mtd", True, True, True),
+    ("ANEXO_IVE.pdf", "Anexo IVE - declaracion ITC-BT-52.pdf", "anexo_ive", True, False, False),
+    ("UNIFILAR.pdf", "Esquema unifilar.pdf", "unifilar", True, False, False),
+    ("SOLICITUD.pdf", "Solicitud de inscripcion BT-1134F1.pdf", "solicitud", True, False, False),
+    ("AUTORIZACION.pdf", "Autorizacion del titular al instalador.pdf", "autorizacion", True, False, False),
+    ("ANEXO_GARAJE.pdf", "Anexo - inspeccion periodica del garaje.pdf", "anexo_garaje", False, False, False),
 ]
 
 
-def generar(datos):
+def generar(datos, aplanar_mtd=True):
+    """Genera el expediente entero.
+
+    `aplanar_mtd=False` deja el MTD con sus campos en vez de aplanado. Solo lo
+    usa herramientas/comparar.py: los dos motores aplanan con librerias
+    distintas y el dibujo no sale igual, asi que se comparan antes de aplanar.
+    """
     cfg = cargar_config()
     preset = valores_tecnicos(datos, cfg)
     calc = calcular(datos, preset, cfg)
@@ -1257,7 +1314,7 @@ def generar(datos):
             "que borre el texto gris al escribir encima: si no lo hace, se "
             "imprime tal cual.")
 
-    for plantilla, nombre_salida, tipo, siempre, quitar in DOCUMENTOS:
+    for plantilla, nombre_salida, tipo, siempre, quitar, aplanar in DOCUMENTOS:
         if tipo == "anexo_garaje" and not incluir_garaje:
             continue
         origen = os.path.join(PLANTILLAS, plantilla)
@@ -1277,7 +1334,8 @@ def generar(datos):
         pistas = PISTAS_ANEXO_GARAJE if tipo == "anexo_garaje" else None
         try:
             escritos, faltan = rellenar_pdf(origen, mapa, destino, casillas,
-                                            cfg, pistas, quitar)
+                                            cfg, pistas, quitar,
+                                            aplanar and aplanar_mtd)
             resultado["documentos"].append(
                 {"nombre": nombre_salida, "ok": True, "campos": escritos})
             if faltan:

@@ -26,6 +26,9 @@ const CAMPOS_TECNICOS = [
   "conductor_proteccion", "iga_intensidad", "iga_poder_corte",
   "dif_intensidad", "dif_sensibilidad", "dif_clase", "fusible_seguridad",
   "tipo_instalacion_di", "tipo_instalacion_circuito",
+  // La planta no es un dato tecnico, pero casi siempre es la misma (-1), asi
+  // que se recuerda igual que los demas y se puede cambiar cuando toque.
+  "plaza_planta",
 ];
 
 let CFG = null;

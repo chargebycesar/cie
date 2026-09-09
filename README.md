@@ -118,14 +118,32 @@ amarillo de la cabecera. Por eso al imprimir no salen. Y el MTD que aprobó la
 OCA, mirado por dentro, tampoco los lleva **y conserva sus campos de formulario**,
 es decir, no está aplanado.
 
-Así que la aplicación saca **dos versiones del MTD**:
+Así que el MTD sale **sin los botones ni el aviso y aplanado**: exactamente lo
+que saldría al pulsar Imprimir y elegir «imprimir a PDF». Los datos quedan
+fijos y ya no hay formulario. No hace falta pulsar nada.
 
-| Archivo | Qué es |
-|---|---|
-| `MTD - Memoria Tecnica de Diseno.pdf` | Sin los botones ni el aviso, con los campos de formulario. Es como el que aprobó la OCA. |
-| `MTD - ... (version impresa).pdf` | Lo mismo pero aplanado: exactamente lo que sale al pulsar Imprimir y elegir «imprimir a PDF». Los datos quedan fijos. |
+Al aplanar apareció un detalle del impreso: **el dibujo de un campo vacío no es
+transparente, es un rectángulo blanco**. Mientras es un formulario da igual,
+porque el visor lo redibuja; pero al aplanarlo queda estampado y se come las
+líneas de las tablas, que salen a trozos. Como un campo sin texto no aporta
+nada al documento impreso, se quita entero antes de aplanar.
 
-Ya no hace falta pulsar el botón: los dos salen hechos. Usa el que te pidan.
+Y otro: tres campos de la cabecera oficial («Dirección General de», «Etiqueta
+de Registro», «Comunidad de Madrid») traen el dibujo sin declarar `/Type
+/XObject /Subtype /Form`. Como campos se ven igual, pero al aplanar
+desaparecían. Se completa en `herramientas/limpiar_plantillas.py`.
+
+### De dónde salen los impresos
+
+El MTD es el oficial, descargado tal cual de la sede de la Comunidad de Madrid:
+
+- [Tramitación de instalaciones eléctricas](https://sede.comunidad.madrid/autorizaciones-licencias-permisos-carnes/tramitacion-instalaciones-electricas/presencial)
+- [Modelo de Memoria Técnica de Diseño](https://gestiona7.madrid.org/i012_impresos/run/j/VerImpreso.icm?CDIMPRESO=IMPRE2722)
+- [Modelo de certificado de instalación (el XLS del CIE)](https://gestiona7.madrid.org/i012_impresos/run/j/VerImpreso.icm?CDIMPRESO=1134FO1)
+
+Si Industria cambia un impreso, se descarga de ahí, se pasa por
+`herramientas/limpiar_plantillas.py` y se comprueba con
+`herramientas/comparar.py` que los campos siguen llamándose igual.
 
 ### Los impresos no venían en blanco
 
@@ -139,8 +157,10 @@ invisible al abrirlos pero recuperable con cualquier extractor de formularios:
   anterior distinto;
 - el dibujo del texto viejo, que sobrevive aunque se cambie el valor del campo.
 
-Todo eso salía dentro de cada documento generado. Se limpia una sola vez, sobre
-las plantillas:
+Todo eso salía dentro de cada documento generado. **El MTD ya no es ese: se ha
+sustituido por el oficial de Industria**, que está virgen de verdad (solo trae
+sus siete campos de cabecera y aviso legal). Los demás se limpian una sola vez,
+sobre las plantillas:
 
 ```bash
 python herramientas/limpiar_plantillas.py
