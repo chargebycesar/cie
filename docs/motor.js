@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js";
-import { rellenarPdf } from "./relleno.js";
-import { generarCie } from "./cie.js";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609100942";
+import { rellenarPdf } from "./relleno.js?v=202609100942";
+import { generarCie } from "./cie.js?v=202609100942";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -28,6 +28,14 @@ export function nombreCarpeta(datos) {
 
 export function direccionUnaLinea(pre, datos) {
   return ["_tipo_via", "_nombre_via", "_numero", "_bloque", "_escalera", "_piso", "_puerta"]
+    .map(s => t(datos[pre + s])).filter(Boolean).join(" ");
+}
+
+/* Solo la calle y el número. El garaje es el edificio, no un piso: en el anexo
+   de la inspección periódica no van ni el portal, ni la escalera, ni el piso ni
+   la puerta, que son de la vivienda del cliente. */
+export function direccionDelEdificio(pre, datos) {
+  return ["_tipo_via", "_nombre_via", "_numero"]
     .map(s => t(datos[pre + s])).filter(Boolean).join(" ");
 }
 
@@ -469,7 +477,7 @@ export function mapaAnexoGaraje(datos, cfg) {
       "domicilop titular": direccionUnaLinea("titular", datos),
       "nº plaza": t(datos.plaza_numero),
       "planta plaza": t(datos.plaza_planta),
-      Texto6: direccionUnaLinea("empl", datos),
+      Texto6: direccionDelEdificio("empl", datos),
       "localidad garaje": t(datos.empl_localidad),
       "c.p. garaje": t(datos.empl_cp),
       "provincia garaje": t(datos.empl_provincia) || "MADRID",

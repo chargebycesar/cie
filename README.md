@@ -78,6 +78,10 @@ Geográfico Nacional, que lo da por calle y número. Si tu portal no está, coge
 más cercano de la calle y te avisa. Y si la calle cruza dos códigos postales, te
 enseña los dos para que elijas el tuyo.
 
+La búsqueda está acotada a la **provincia de Madrid**, que es para donde hace
+boletines esto. Sin acotar, una calle con nombre común devuelve resultados de
+media España. El día que haga falta otra comunidad se quita de `docs/cp.js`.
+
 El resultado se contrasta **por calle y por municipio a la vez**, porque ninguna
 de las dos cosas basta sola. La misma calle existe en medio país: buscando
 «Calle Real» en Rivas-Vaciamadrid, el callejero contesta con la de Crémenes, en
@@ -111,7 +115,7 @@ lo devuelves.
 | `nucleo.py` | El mismo motor escrito en Python. Se conserva porque es el que valida al del navegador: `herramientas/comparar.py` genera el expediente por los dos caminos y compara campo por campo. |
 | `servidor.py`, `web/` | La versión de escritorio. **Su pantalla se quedó atrás** (le faltan campos que sí están en `docs/`). El motor sí está al día. Usa la del navegador. |
 | `config.json`, `prueba.json` | Tus datos y un expediente de prueba. **No se suben al repositorio.** Junto a ellos están `config.ejemplo.json` y `prueba.ejemplo.json`, que sí, con los datos en blanco. |
-| `publicar.bat` | Sube la aplicación a GitHub. Doble clic. |
+| `publicar.bat` | Sube la aplicación a GitHub. Doble clic. Antes de subir pone el sello de versión y comprueba que no se cuela ningún dato personal. |
 | `docs/plantillas/campos.json` | La lista de campos de cada impreso con su etiqueta, para poder elegirlos desde Configuración. |
 | `herramientas/` | Preparación de los impresos y comprobaciones. Solo se usa si cambia un impreso oficial. |
 | `empaquetar/` | Instalador y firma de código, por si algún día se vende. |
@@ -254,6 +258,14 @@ impreso:
 - **El AcroForm no se puede rehacer de cero.** Ahí vive `/DR`, el catálogo de
   fuentes. Sin él los campos se quedan mudos. Y en algunos impresos está escrito
   dentro del catálogo en vez de apuntar a un objeto aparte.
+
+### El sello de versión
+
+El navegador se guarda los `.js` y GitHub Pages le dice que puede quedárselos un
+rato, así que después de publicar un arreglo se puede seguir usando la versión
+de antes sin enterarse. Por eso `publicar.bat` le pone un `?v=` con la fecha y la
+hora a cada módulo antes de subir, con `herramientas/sellar_version.py`. Así cada
+publicación trae una dirección distinta y el navegador se la baja.
 
 ### Comprobar antes de subir
 

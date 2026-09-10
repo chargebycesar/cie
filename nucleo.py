@@ -155,6 +155,18 @@ def nombre_carpeta(datos):
     return f"{base}_{t(datos.get('fecha')) or date.today().isoformat()}"
 
 
+def direccion_del_edificio(pre, datos):
+    """Solo la calle y el numero: 'CALLE MAYOR 2'.
+
+    El garaje es el edificio, no un piso: en el anexo de la inspeccion
+    periodica no van ni el portal, ni la escalera, ni el piso ni la puerta, que
+    son de la vivienda del cliente.
+    """
+    piezas = [t(datos.get(pre + "_tipo_via")), t(datos.get(pre + "_nombre_via")),
+              t(datos.get(pre + "_numero"))]
+    return " ".join(p for p in piezas if p)
+
+
 def direccion_una_linea(pre, datos):
     """Monta 'CALLE MAYOR 2 3 IZQ' a partir de los campos sueltos."""
     piezas = [t(datos.get(pre + "_tipo_via")), t(datos.get(pre + "_nombre_via")),
@@ -940,7 +952,7 @@ def mapa_anexo_garaje(datos, cfg):
         "domicilop titular": direccion_una_linea("titular", datos),
         "nº plaza": t(datos.get("plaza_numero")),
         "planta plaza": t(datos.get("plaza_planta")),
-        "Texto6": direccion_una_linea("empl", datos),
+        "Texto6": direccion_del_edificio("empl", datos),
         "localidad garaje": t(datos.get("empl_localidad")),
         "c.p. garaje": t(datos.get("empl_cp")),
         "provincia garaje": t(datos.get("empl_provincia")) or "MADRID",

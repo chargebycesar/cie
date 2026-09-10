@@ -115,6 +115,25 @@ def revisar(ficheros):
 
 # ------------------------------------------------------------------ el proceso
 
+def sellar_version():
+    """Cambia el ?v= de los modulos para que el navegador no reuse los viejos.
+
+    Sin esto, despues de publicar un arreglo el navegador sigue usando la
+    version que tenia guardada y el usuario no ve el cambio.
+    """
+    try:
+        import sellar_version as sello
+    except Exception as e:  # noqa: BLE001
+        print(f"  No he podido sellar ({e}). Se sube igual.")
+        return
+    try:
+        sello.main()
+    except SystemExit:
+        pass
+    except Exception as e:  # noqa: BLE001
+        print(f"  No he podido sellar ({e}). Se sube igual.")
+
+
 def preparar_repositorio():
     """git init la primera vez. Devuelve True si acaba de crearlo."""
     if os.path.isdir(os.path.join(RAIZ, ".git")):
@@ -301,6 +320,10 @@ def main():
     # La primera vez es la primera SUBIDA, no la primera vez que se abre esto:
     # si el envio fallo, las instrucciones de encender la pagina hacen falta.
     primera_vez = not subido_alguna_vez()
+
+    # --- sello de version, para que el navegador se baje lo nuevo
+    titulo("Poniendo el sello de version")
+    sellar_version()
 
     # --- que ha cambiado
     titulo("Mirando que ha cambiado")

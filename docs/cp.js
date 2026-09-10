@@ -51,6 +51,13 @@ export function codigosDe(libreta, municipio) {
 const CARTOCIUDAD =
   "https://www.cartociudad.es/geocoder/api/geocoder/candidatesJsonp";
 
+/* De momento esta aplicación es solo para la Comunidad de Madrid, así que la
+   búsqueda se acota a la provincia 28. Sin acotar, una calle con nombre común
+   -Real, Mayor, Iglesia- devuelve resultados de media España, y el primero que
+   sale puede ser de León. El día que se hagan boletines de otra comunidad, se
+   quita de aquí. */
+const PROVINCIA = { codigo: "28", nombre: "MADRID" };
+
 /* La respuesta viene envuelta en callback(...), que es como se pedían las
    cosas entre dominios antes de que existiera CORS. Hoy el servicio sí admite
    CORS, así que basta con quitarle la envoltura. */
@@ -145,7 +152,14 @@ export async function buscarCodigoPostal(direccion, buscar = fetch) {
   const consulta = direccionParaBuscar(direccion);
   if (!consulta) return { ok: false, motivo: "falta la calle o la localidad" };
 
-  const url = `${CARTOCIUDAD}?q=${encodeURIComponent(consulta)}&limit=15`;
+  const suProvincia = normalizar(direccion.provincia);
+  if (suProvincia && suProvincia !== PROVINCIA.nombre) {
+    return { ok: false,
+             motivo: `de momento solo busco en ${PROVINCIA.nombre}` };
+  }
+
+  const url = `${CARTOCIUDAD}?q=${encodeURIComponent(consulta)}&limit=15`
+    + `&cod_provincia=${PROVINCIA.codigo}`;
   let bruto;
   try {
     // Sin cabecera Accept: el servicio contesta application/x-javascript y
@@ -160,7 +174,10 @@ export async function buscarCodigoPostal(direccion, buscar = fetch) {
   const lista = Array.isArray(bruto) ? bruto : [bruto];
   const via = [direccion.tipoVia, direccion.nombreVia].filter(Boolean).join(" ");
   const numero = normalizar(direccion.numero);
-  const provincia = normalizar(direccion.provincia);
+  // La provincia es siempre la de la aplicación, se escriba lo que se escriba:
+  // de momento esto solo hace boletines de Madrid, y una calle con nombre
+  // común existe en media España.
+  const provincia = PROVINCIA.nombre;
   const vistos = new Map();
   const otrosSitios = new Set();
 
@@ -203,7 +220,7 @@ export async function buscarCodigoPostal(direccion, buscar = fetch) {
       motivo: fuera.length
         ? `esa calle existe, pero en ${fuera.slice(0, 3).join(" y en ")}, `
           + "no en el municipio que has puesto"
-        : "el callejero no encuentra esa dirección",
+        : `el callejero no encuentra esa dirección en ${PROVINCIA.nombre}`,
       otrosSitios: fuera,
       consulta,
     };
