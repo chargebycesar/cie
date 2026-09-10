@@ -6,6 +6,8 @@
  */
 
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js";
+import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
+         normalizar } from "./cp.js";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -80,6 +82,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   rellenarListas();
   aplicarValoresTecnicos(CFG.tecnica);
+  if (migrarLibreta()) guardarAjustes();
   pintarLocalidades();
   pintarConfigEmpresa();
   pintarPestanasDoc();
@@ -172,41 +175,167 @@ form.elements.seccion.addEventListener("change", e => {
 
 /* ══════════════ códigos postales ══════════════ */
 
+/* Un municipio puede tener muchos códigos postales, así que no se recuerdan por
+   localidad -eso hacía que la segunda instalación del mismo pueblo heredara el
+   código de la primera- sino por calle. Y para acertar a la primera se le puede
+   preguntar al callejero oficial del IGN, que lo sabe por calle y número. */
+
+const CAMPOS_DIRECCION = {
+  titular: { via: "titular_tipo_via", nombre: "titular_nombre_via",
+             numero: "titular_numero", localidad: "titular_localidad",
+             provincia: "titular_provincia", cp: "titular_cp" },
+  empl: { via: "empl_tipo_via", nombre: "empl_nombre_via",
+          numero: "empl_numero", localidad: "empl_localidad",
+          provincia: "empl_provincia", cp: "empl_cp" },
+  cp: { localidad: "cp_localidad", cp: "cp_cp" },
+};
+
+const valor = nombre => {
+  const c = form.elements[nombre];
+  return c ? String(c.value || "").trim() : "";
+};
+
+function direccionDe(pre) {
+  const c = CAMPOS_DIRECCION[pre] || {};
+  return {
+    tipoVia: valor(c.via), nombreVia: valor(c.nombre), numero: valor(c.numero),
+    municipio: valor(c.localidad), provincia: valor(c.provincia),
+  };
+}
+
+const claveDe = pre => {
+  const d = direccionDe(pre);
+  return claveCalle(d.municipio, d.tipoVia, d.nombreVia);
+};
+
+/* La libreta guarda calle → código postal. Lo de antes, localidad → código, se
+   convierte en sugerencias del municipio: no se borra, pero deja de rellenarse
+   solo, porque era justo lo que fallaba. */
+function libreta() {
+  return CFG.codigos_postales || (CFG.codigos_postales = {});
+}
+
+function migrarLibreta() {
+  const vieja = libreta();
+  let cambio = false;
+  for (const [clave, cp] of Object.entries(vieja)) {
+    if (clave.includes("|")) continue;              // ya es de las nuevas
+    delete vieja[clave];
+    vieja[`${normalizar(clave)}|`] = cp;            // solo para sugerir
+    cambio = true;
+  }
+  return cambio;
+}
+
 function pintarLocalidades() {
   const lista = $("#lista-localidades");
+  if (!lista) return;
+  const nombres = [...new Set(Object.keys(libreta()).map(municipioDe))]
+    .filter(Boolean).sort();
   lista.innerHTML = "";
-  Object.keys(CFG.codigos_postales || {}).sort()
-    .forEach(n => lista.appendChild(new Option(n, n)));
+  nombres.forEach(n => lista.appendChild(new Option(n, n)));
 }
 
-function completarCodigoPostal(prefijo) {
-  const loc = form.elements[prefijo + "_localidad"];
-  const cp = form.elements[prefijo + "_cp"];
-  if (!loc || !cp || cp.value.trim()) return;
-  const guardado = (CFG.codigos_postales || {})[loc.value.trim().toUpperCase()];
-  if (guardado) {
-    cp.value = guardado;
-    cp.classList.add("recordado");
-    setTimeout(() => cp.classList.remove("recordado"), 1500);
-  }
+/* Las sugerencias de cada casilla: los códigos que ya has usado en ese
+   municipio. Si hay más de uno, ahí se ve que hay que elegir. */
+function pintarSugerencias(pre) {
+  const lista = $(`#cps-${pre}`);
+  if (!lista) return;
+  const municipio = valor((CAMPOS_DIRECCION[pre] || {}).localidad);
+  lista.innerHTML = "";
+  codigosDe(libreta(), municipio)
+    .forEach(cp => lista.appendChild(new Option(cp, cp)));
 }
 
-["titular", "empl", "cp"].forEach(pre => {
-  const c = form.elements[pre + "_localidad"];
-  if (!c) return;
-  c.addEventListener("change", () => completarCodigoPostal(pre));
-  c.addEventListener("blur", () => completarCodigoPostal(pre));
+function avisarCp(texto, error = false) {
+  const caja = $("#aviso-cp");
+  if (!caja) return;
+  caja.textContent = texto || "";
+  caja.classList.toggle("error", !!error);
+}
+
+/* Al salir de la localidad o de la calle: si esa calle ya se usó, se pone su
+   código. Nunca se rellena a partir del municipio solo. */
+function completarCodigoPostal(pre) {
+  pintarSugerencias(pre);
+  const campo = form.elements[(CAMPOS_DIRECCION[pre] || {}).cp];
+  if (!campo || campo.value.trim()) return;
+  const guardado = libreta()[claveDe(pre)];
+  if (!esCodigoPostal(guardado)) return;
+  campo.value = guardado;
+  campo.classList.add("recordado");
+  setTimeout(() => campo.classList.remove("recordado"), 1500);
+}
+
+Object.keys(CAMPOS_DIRECCION).forEach(pre => {
+  const c = CAMPOS_DIRECCION[pre];
+  [c.localidad, c.nombre, c.via].filter(Boolean).forEach(nombre => {
+    const campo = form.elements[nombre];
+    if (!campo) return;
+    campo.addEventListener("change", () => completarCodigoPostal(pre));
+    campo.addEventListener("blur", () => completarCodigoPostal(pre));
+  });
 });
 
-function aprenderCodigosPostales(datos) {
+/* El botón: se lo pregunta al callejero oficial. Es lo único de la aplicación
+   que sale de este ordenador, por eso hay que pulsarlo a mano y por eso solo
+   sale la dirección: ni el nombre, ni el DNI, ni el teléfono de nadie. */
+$$(".buscar-cp").forEach(boton => {
+  boton.addEventListener("click", async () => {
+    const pre = boton.dataset.cp;
+    const campo = form.elements[(CAMPOS_DIRECCION[pre] || {}).cp];
+    const direccion = direccionDe(pre);
+    boton.disabled = true;
+    const antes = boton.textContent;
+    boton.textContent = "…";
+    avisarCp("Preguntando al callejero del IGN. Solo sale la dirección.");
+    try {
+      const r = await buscarCodigoPostal(direccion);
+      if (!r.ok) {
+        avisarCp(`No he podido: ${r.motivo}. Escríbelo a mano.`, true);
+        return;
+      }
+      const [primera, ...otras] = r.opciones;
+      if (campo) campo.value = primera.cp;
+      let cambio = apuntarCodigo(claveDe(pre), primera.cp);
+      // Los demás códigos de esa calle se apuntan como sugerencia del
+      // municipio, para tenerlos a mano la próxima vez.
+      r.opciones.forEach(o => {
+        cambio = apuntarCodigo(`${normalizar(o.municipio)}|`, o.cp) || cambio;
+      });
+      if (cambio) { guardarAjustes(); pintarLocalidades(); pintarCodigosPostales(); }
+      pintarSugerencias(pre);
+      // Si no encuentra tu portal usa el más cercano de la calle, y eso hay
+      // que decirlo: en una calle larga el código cambia a mitad.
+      const donde = primera.exacto
+        ? primera.direccion
+        : `${primera.direccion}, que es el portal más cercano que conoce`;
+      avisarCp(otras.length
+        ? `${primera.cp}, por ${donde}. Esa calle también tiene `
+          + `${otras.map(o => o.cp).join(" y ")}: comprueba cuál es tu portal.`
+        : `${primera.cp}, por ${donde}.`);
+    } finally {
+      boton.disabled = false;
+      boton.textContent = antes;
+    }
+  });
+});
+
+function apuntarCodigo(clave, cp) {
+  if (!clave || !esCodigoPostal(cp)) return false;
+  if (libreta()[clave] === cp) return false;
+  libreta()[clave] = cp;
+  return true;
+}
+
+/* Al generar el expediente se apunta el código de cada calle usada. */
+function aprenderCodigosPostales() {
   let cambio = false;
   for (const pre of ["titular", "empl"]) {
-    const loc = String(datos[pre + "_localidad"] || "").trim().toUpperCase();
-    const cp = String(datos[pre + "_cp"] || "").replace(/\D/g, "");
-    if (loc && cp.length === 5 && CFG.codigos_postales[loc] !== cp) {
-      CFG.codigos_postales[loc] = cp;
-      cambio = true;
-    }
+    const cp = valor((CAMPOS_DIRECCION[pre] || {}).cp).replace(/\D/g, "");
+    const municipio = normalizar(valor(CAMPOS_DIRECCION[pre].localidad));
+    cambio = apuntarCodigo(claveDe(pre), cp) || cambio;
+    if (municipio) cambio = apuntarCodigo(`${municipio}|`, cp) || cambio;
   }
   if (cambio) { guardarAjustes(); pintarLocalidades(); pintarCodigosPostales(); }
 }
@@ -338,7 +467,7 @@ form.addEventListener("submit", async e => {
   mostrarResultado(r, datos);
 
   if (!r.error) {
-    aprenderCodigosPostales(datos);
+    aprenderCodigosPostales();
     guardarExpediente(r.carpeta, datos, r.identificador);
   }
 });
@@ -490,11 +619,18 @@ function pintarConfigEmpresa() {
 
 function pintarCodigosPostales() {
   const caja = $("#bloque-cps");
-  const libreta = CFG.codigos_postales || {};
-  const claves = Object.keys(libreta).sort();
-  caja.innerHTML = claves.length
-    ? claves.map(k => `<span class="cp"><b>${escapar(k)}</b> ${escapar(libreta[k])}</span>`).join("")
-    : '<span class="pista">Todavía no ha aprendido ninguno.</span>';
+  const guardados = libreta();
+  // Las entradas que acaban en «|» son solo del municipio: se guardan para
+  // sugerir, pero no rellenan nada. Aquí se enseñan las calles, que son las
+  // que sirven.
+  const calles = Object.keys(guardados).filter(k => !k.endsWith("|")).sort();
+  caja.innerHTML = calles.length
+    ? calles.map(k => {
+      const [municipio, via] = k.split("|");
+      return `<span class="cp"><b>${escapar(guardados[k])}</b> `
+        + `${escapar(via)} · ${escapar(municipio)}</span>`;
+    }).join("")
+    : '<span class="pista">Todavía no ha aprendido ninguna.</span>';
 }
 
 function avisar(donde, texto) {

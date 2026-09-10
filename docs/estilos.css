@@ -255,3 +255,16 @@ button.enlace:hover{color:#0f4396}
 .anadir-extra select{flex:2;min-width:220px}
 .anadir-extra #extra-buscar{flex:0 0 140px;min-width:110px}
 .anadir-extra input{flex:1;min-width:120px}
+
+/* Código postal: la casilla con su botón de buscar al lado */
+.con-boton{display:flex;gap:6px;align-items:stretch}
+.con-boton input{flex:1;min-width:0}
+.buscar-cp{
+  flex:0 0 auto;background:var(--suave-fondo,#eef2f8);border:1px solid var(--borde);
+  border-radius:8px;color:var(--acento);font-size:12px;font-weight:600;
+  padding:0 10px;cursor:pointer;font-family:inherit;white-space:nowrap;
+}
+.buscar-cp:hover{background:#e3ebf6}
+.buscar-cp[disabled]{opacity:.55;cursor:default}
+#aviso-cp{margin:6px 0 0}
+#aviso-cp.error{color:var(--error)}

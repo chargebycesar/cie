@@ -56,6 +56,44 @@ python herramientas/rastrear.py docs/plantillas/*.pdf
 
 ---
 
+## Cómo se usa
+
+La primera vez, en **Configuración**: los datos de tu empresa. Se guardan en ese
+navegador y no hay que volver a escribirlos.
+
+Después, por cada obra: cliente, plaza y planta, metros de línea y CUPS. Lo demás
+viene puesto. Pulsas **Generar documentos** y te descargas el ZIP.
+
+### El código postal
+
+Un municipio puede tener muchos códigos postales: Madrid tiene más de
+doscientos, y hasta la calle de Alcalá cambia de código a mitad. Por eso la
+aplicación **los recuerda por calle**, no por localidad. La segunda instalación
+del mismo pueblo, en otra calle, no hereda el código de la primera: la casilla
+se queda vacía, que es lo correcto.
+
+Si no lo sabes, el botón **Buscar** que hay junto a la casilla se lo pregunta a
+[CartoCiudad](https://www.cartociudad.es/), el callejero oficial del Instituto
+Geográfico Nacional, que lo da por calle y número. Si tu portal no está, coge el
+más cercano de la calle y te avisa. Y si la calle cruza dos códigos postales, te
+enseña los dos para que elijas el tuyo.
+
+**Es lo único de toda la aplicación que sale de tu ordenador**, y por eso hay que
+pulsar el botón: no se consulta nada solo. Lo que sale es la dirección —tipo de
+vía, nombre, número, localidad y provincia—, nunca el nombre, el DNI, el teléfono
+ni el correo de nadie. Si no hay red, o el servicio no contesta, se escribe a
+mano y no pasa nada más.
+
+### Copia de seguridad
+
+Lo tuyo vive en el navegador. Si cambias de ordenador, borras los datos de
+navegación o usas otro navegador, lo pierdes. En **Configuración** tienes
+**Descargar copia**, que te guarda en un archivo los datos de empresa, los
+valores por defecto, los códigos postales y el historial. Con **Restaurar copia**
+lo devuelves.
+
+---
+
 ## Qué hay en cada carpeta
 
 | Carpeta | Qué es |
@@ -85,6 +123,8 @@ un CDN y el resto son cuatro módulos de JavaScript:
 - `cie.js` — dibuja el CIE sobre el impreso en blanco, con las tres fórmulas del
   libro oficial reescritas: el identificador del certificado, el aviso
   FALTAN DATOS / COMPLETADO y la comprobación del CUPS.
+- `cp.js` — el código postal: la memoria por calle y la consulta al
+  callejero oficial.
 - `app.js` — la pantalla.
 
 El motor de JavaScript se comprobó contra el de Python sobre el mismo

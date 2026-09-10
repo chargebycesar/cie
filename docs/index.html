@@ -65,7 +65,13 @@
 
         <label class="c4">Localidad <span class="obl">*</span>
           <input name="titular_localidad" required list="lista-localidades"></label>
-        <label class="c2">C.P. <input name="titular_cp" inputmode="numeric"></label>
+        <label class="c2">C.P.
+          <span class="con-boton">
+            <input name="titular_cp" inputmode="numeric" list="cps-titular">
+            <button type="button" class="buscar-cp" data-cp="titular"
+                    title="Buscarlo en el callejero oficial">Buscar</button>
+          </span></label>
+        <datalist id="cps-titular"></datalist>
         <label class="c2">Provincia <input name="titular_provincia" value="MADRID"></label>
         <label class="c2">Móvil <input name="titular_movil"></label>
         <label class="c2">Teléfono fijo <input name="titular_fijo"></label>
@@ -90,10 +96,17 @@
         <label class="c1">Puerta <input name="empl_puerta"></label>
         <label class="c4">Localidad
           <input name="empl_localidad" list="lista-localidades"></label>
-        <label class="c2">C.P. <input name="empl_cp" inputmode="numeric"></label>
+        <label class="c2">C.P.
+          <span class="con-boton">
+            <input name="empl_cp" inputmode="numeric" list="cps-empl">
+            <button type="button" class="buscar-cp" data-cp="empl"
+                    title="Buscarlo en el callejero oficial">Buscar</button>
+          </span></label>
+        <datalist id="cps-empl"></datalist>
         <label class="c2">Provincia <input name="empl_provincia" value="MADRID"></label>
       </div>
       <datalist id="lista-localidades"></datalist>
+      <p class="ayuda" id="aviso-cp"></p>
     </fieldset>
 
     <!-- ─── 2 · La obra ─── -->
@@ -210,7 +223,8 @@
         <label class="c5">Domicilio <input name="cp_domicilio"></label>
         <label class="c4">Localidad
           <input name="cp_localidad" list="lista-localidades"></label>
-        <label class="c2">C.P. <input name="cp_cp"></label>
+        <label class="c2">C.P. <input name="cp_cp" list="cps-cp"></label>
+        <datalist id="cps-cp"></datalist>
         <label class="c3">Provincia <input name="cp_provincia" value="MADRID"></label>
       </div>
     </fieldset>
@@ -283,8 +297,13 @@
 
   <h2>Códigos postales aprendidos</h2>
   <p class="ayuda">
-    La aplicación recuerda el código postal de cada localidad que escribes.
-    No inventa ninguno: solo recuerda los tuyos.
+    Se recuerdan <strong>por calle</strong>, no por municipio: un pueblo puede
+    tener varios códigos postales y Madrid tiene más de doscientos. Si no lo
+    sabes, el botón <strong>Buscar</strong> que hay junto a la casilla se lo
+    pregunta al callejero oficial del Instituto Geográfico Nacional, que lo da
+    por calle y número. Es lo único de toda la aplicación que sale de este
+    ordenador, y lo que sale es la dirección: ni el nombre, ni el DNI, ni el
+    teléfono de nadie.
   </p>
   <div id="bloque-cps" class="lista-cps"></div>
 
