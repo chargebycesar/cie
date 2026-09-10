@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202609100942";
+import { mayus } from "./util.js?v=202609101002";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
@@ -22,20 +22,30 @@ const TAM_MINIMO = 4;
  * que meter en una línea -la palabra más larga si el campo admite varias- y se
  * reduce hasta que entre. Los campos con tamaño puesto por el impreso no se
  * tocan. */
-function ajustarTamano(campo, texto, helvetica) {
+function ajustarTamano(campo, texto, helvetica, color = "0 g") {
   const widgets = campo.acroField.getWidgets();
   if (!widgets.length || !texto) return;
   // El tamaño se lee de la apariencia por defecto del campo: pdf-lib 1.17.1 no
   // tiene getFontSize(), solo setFontSize().
+  //
+  // Si el campo no dice tamaño, lo hereda del formulario, y en estos impresos
+  // el del formulario es «/Helv 0 Tf», o sea automático. Entonces la librería
+  // se lo inventa: en el anexo del garaje eligió 19 puntos para recuadros de
+  // 20, el texto se salía por arriba y el visor lo recortaba entero -el NIF y
+  // el domicilio del cliente salían en blanco-. Así que «sin tamaño» cuenta
+  // como automático y se le pone uno que quepa.
   let da = "";
-  try { da = campo.acroField.getDefaultAppearance() || ""; } catch (e) { return; }
+  try { da = campo.acroField.getDefaultAppearance() || ""; } catch (e) { da = ""; }
   const puesto = /([\d.]+)\s+Tf/.exec(da);
-  if (!puesto || Number(puesto[1]) > 0) return;   // el impreso ya dice el tamaño
+  if (puesto && Number(puesto[1]) > 0) return;    // el impreso ya dice el tamaño
   let tam;
 
+  // En valor absoluto: algunos recuadros de estos impresos vienen con el
+  // rectángulo del revés -el anexo del garaje trae dos con alto -20-, y el
+  // tamaño salía en negativo, o sea el mínimo, y el dato en letra diminuta.
   const caja = widgets[0].getRectangle();
-  const ancho = Math.max(6, caja.width - 4);
-  const alto = Math.max(6, caja.height - 2);
+  const ancho = Math.max(6, Math.abs(caja.width) - 4);
+  const alto = Math.max(6, Math.abs(caja.height) - 2);
   let multi = false;
   try { multi = campo.isMultiline(); } catch (e) { /* no todos lo dicen */ }
 
@@ -52,7 +62,8 @@ function ajustarTamano(campo, texto, helvetica) {
   // del recuadro y solo si no lo hay baja al del campo. Puesto en el campo lo
   // ignora y se inventa uno para llenar el hueco, que es el problema de raíz.
   for (const w of widgets) {
-    try { w.setDefaultAppearance(`/Helv ${tam} Tf 0 g`); } catch (e) { /* ya está */ }
+    try { w.setDefaultAppearance(`/Helv ${tam} Tf ${color}`); }
+    catch (e) { /* si no se deja, se queda como estaba */ }
   }
   try { campo.setFontSize(tam); } catch (e) { /* si no se deja, da igual */ }
 }
@@ -158,9 +169,11 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
         ajustarTamano(campo, texto, helvetica);
       } else if (pistas && pistas[nombre]) {
         // Hueco que rellena el cliente: se le deja escrito en gris qué poner.
-        campo.setText(mayus(pistas[nombre], cfg));
-        campo.acroField.setDefaultAppearance(
-          `/Helv 0 Tf ${GRIS_PISTA.join(" ")} rg`);
+        // Con su tamaño ajustado, como los demás: si no, la librería elige uno
+        // enorme y la leyenda no se ve hasta que pinchas en la casilla.
+        const pista = mayus(pistas[nombre], cfg);
+        campo.setText(pista);
+        ajustarTamano(campo, pista, helvetica, `${GRIS_PISTA.join(" ")} rg`);
       } else {
         campo.setText("");
       }

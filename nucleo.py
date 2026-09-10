@@ -504,10 +504,17 @@ def _ajustar_tamano(w, texto):
     si el campo admite varias- y se reduce hasta que entre. Los campos con
     tamano puesto por el impreso no se tocan.
     """
+    # Si el campo no dice tamano lo hereda del formulario, y en estos impresos
+    # el del formulario es automatico. Entonces el visor se lo inventa: en el
+    # anexo del garaje elegia 19 puntos para recuadros de 20 y el texto salia
+    # recortado. "Sin tamano" cuenta como automatico.
     if w.text_fontsize:
         return                      # el impreso ya dice de que tamano va
-    ancho = max(6.0, w.rect.width - 4)
-    alto = max(6.0, w.rect.height - 2)
+    # En valor absoluto: algunos recuadros vienen con el rectangulo del reves
+    # y el tamano saldria en negativo, o sea el minimo. (PyMuPDF ya lo
+    # normaliza, pero asi no depende de eso.)
+    ancho = max(6.0, abs(w.rect.width) - 4)
+    alto = max(6.0, abs(w.rect.height) - 2)
     multi = bool(w.field_flags & 4096)          # bit 13: varias lineas
     tam = min(TAM_MAXIMO, TAM_MAXIMO if multi else alto)
     piezas = texto.split() if multi else [texto]
@@ -580,9 +587,12 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
                     w.update()
                 elif (pistas or {}).get(nombre):
                     # Hueco que rellena el cliente: se le deja escrito en gris
-                    # que es lo que tiene que poner ahi.
-                    w.field_value = mayus(pistas[nombre], cfg)
+                    # que es lo que tiene que poner ahi, con su tamano ajustado
+                    # como los demas.
+                    pista = mayus(pistas[nombre], cfg)
+                    w.field_value = pista
                     w.text_color = GRIS_PISTA
+                    _ajustar_tamano(w, pista)
                     w.update()
                     try:
                         doc.xref_set_key(w.xref, "TU",
@@ -962,6 +972,11 @@ def mapa_anexo_garaje(datos, cfg):
         "localidad tit. garaje": t(datos.get("cp_localidad")),
         "C.P. titular garaje": t(datos.get("cp_cp")),
         "provincia tit. garaje": t(datos.get("cp_provincia")) or "MADRID",
+        # El "En ______, a __ de ____" de la firma. Va la localidad del
+        # cliente, no la provincia: ese recuadro compartia campo con la
+        # provincia del garaje y por eso ponia MADRID.
+        "lugar firma": t(datos.get("titular_localidad"))
+                       or t(datos.get("empl_localidad")),
         "dia": dia,
         "mes": mes,
         "año": anio,

@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609100942";
-import { rellenarPdf } from "./relleno.js?v=202609100942";
-import { generarCie } from "./cie.js?v=202609100942";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609101002";
+import { rellenarPdf } from "./relleno.js?v=202609101002";
+import { generarCie } from "./cie.js?v=202609101002";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -487,6 +487,10 @@ export function mapaAnexoGaraje(datos, cfg) {
       "localidad tit. garaje": t(datos.cp_localidad),
       "C.P. titular garaje": t(datos.cp_cp),
       "provincia tit. garaje": t(datos.cp_provincia) || "MADRID",
+      // El "En ______, a __ de ____" de la firma. Va la localidad del
+      // cliente, no la provincia: ese recuadro compartia campo con la
+      // provincia del garaje y por eso ponia MADRID.
+      "lugar firma": t(datos.titular_localidad) || t(datos.empl_localidad),
       dia, mes, año: anio,
     },
     casillas: {},

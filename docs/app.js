@@ -5,9 +5,9 @@
  * vive en el almacenamiento de este navegador.
  */
 
-import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609100942";
+import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609101002";
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609100942";
+         normalizar } from "./cp.js?v=202609101002";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -62,7 +62,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609100942")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609101002")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -723,7 +723,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609100942")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609101002")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
