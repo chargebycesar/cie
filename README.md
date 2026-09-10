@@ -78,6 +78,13 @@ Geográfico Nacional, que lo da por calle y número. Si tu portal no está, coge
 más cercano de la calle y te avisa. Y si la calle cruza dos códigos postales, te
 enseña los dos para que elijas el tuyo.
 
+El resultado se contrasta **por calle y por municipio a la vez**, porque ninguna
+de las dos cosas basta sola. La misma calle existe en medio país: buscando
+«Calle Real» en Rivas-Vaciamadrid, el callejero contesta con la de Crémenes, en
+León. Y dentro de un mismo municipio hay calles que se parecen: buscando «Mayor»
+ofrece «Mayorga» y «Miguel Mayor», que son otras calles con otro código. Si la
+calle existe pero en otro sitio, te lo dice en vez de darte un código de allí.
+
 **Es lo único de toda la aplicación que sale de tu ordenador**, y por eso hay que
 pulsar el botón: no se consulta nada solo. Lo que sale es la dirección —tipo de
 vía, nombre, número, localidad y provincia—, nunca el nombre, el DNI, el teléfono

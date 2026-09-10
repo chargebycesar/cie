@@ -305,11 +305,16 @@ $$(".buscar-cp").forEach(boton => {
       });
       if (cambio) { guardarAjustes(); pintarLocalidades(); pintarCodigosPostales(); }
       pintarSugerencias(pre);
-      // Si no encuentra tu portal usa el más cercano de la calle, y eso hay
-      // que decirlo: en una calle larga el código cambia a mitad.
-      const donde = primera.exacto
-        ? primera.direccion
-        : `${primera.direccion}, que es el portal más cercano que conoce`;
+      // Se enseña la dirección y el municipio con los que ha contestado, para
+      // que se vea que es tu calle y tu pueblo: la misma calle existe en medio
+      // país y el callejero ofrece las de fuera sin avisar.
+      // La dirección del callejero ya suele traer el municipio detrás; solo se
+      // añade cuando no está, para no decirlo dos veces.
+      const yaLoDice = normalizar(primera.direccion)
+        .includes(normalizar(primera.municipio));
+      const donde = primera.direccion
+        + (yaLoDice ? "" : ` (${primera.municipio})`)
+        + (primera.exacto ? "" : ", que es el portal más cercano que conoce");
       avisarCp(otras.length
         ? `${primera.cp}, por ${donde}. Esa calle también tiene `
           + `${otras.map(o => o.cp).join(" y ")}: comprueba cuál es tu portal.`

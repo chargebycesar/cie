@@ -97,14 +97,42 @@ export function casaEn(direccionCallejero, nombreBuscado) {
   return resto.split(" ")[0];
 }
 
+/* La consulta va SIN provincia. El callejero la rechaza: «calle mayor 1,
+   Alcalá de Henares» contesta, y «calle mayor 1, Alcalá de Henares, Madrid» no
+   devuelve nada. La provincia se usa después, para descartar resultados. */
 export function direccionParaBuscar(d) {
   const via = [d.tipoVia, d.nombreVia].map(x => String(x || "").trim())
     .filter(Boolean).join(" ");
   const numero = String(d.numero || "").trim();
-  const sitio = [d.municipio, d.provincia].map(x => String(x || "").trim())
-    .filter(Boolean).join(", ");
-  if (!via || !sitio) return "";
-  return [numero ? `${via} ${numero}` : via, sitio].join(", ");
+  const municipio = String(d.municipio || "").trim();
+  if (!via || !municipio) return "";
+  return [numero ? `${via} ${numero}` : via, municipio].join(", ");
+}
+
+/* Un municipio se escribe de varias maneras: el callejero usa la del INE, que
+   pone el artículo detrás -«Rozas de Madrid, Las»-, y tú escribes «Las Rozas de
+   Madrid». Son el mismo sitio. */
+const ARTICULOS_MUNICIPIO = ["EL", "LA", "LOS", "LAS", "A", "O", "AS", "OS",
+                             "ELS", "SA", "ES"];
+
+export function formasDelMunicipio(nombre) {
+  const n = normalizar(nombre);
+  if (!n) return [];
+  const formas = new Set([n]);
+  const coma = n.match(/^(.*),\s*(.+)$/);
+  if (coma) formas.add(`${coma[2]} ${coma[1]}`.trim());
+  const trozos = n.split(" ");
+  if (trozos.length > 1 && ARTICULOS_MUNICIPIO.includes(trozos[0])) {
+    formas.add(`${trozos.slice(1).join(" ")}, ${trozos[0]}`);
+    formas.add(trozos.slice(1).join(" "));
+  }
+  return [...formas];
+}
+
+export function mismoMunicipio(a, b) {
+  const unos = formasDelMunicipio(a);
+  const otros = formasDelMunicipio(b);
+  return unos.some(x => otros.includes(x));
 }
 
 /* Pregunta el código postal de una dirección. Devuelve una lista de opciones,
@@ -130,17 +158,26 @@ export async function buscarCodigoPostal(direccion, buscar = fetch) {
   }
 
   const lista = Array.isArray(bruto) ? bruto : [bruto];
-  const municipio = normalizar(direccion.municipio);
-  const via = normalizar([direccion.tipoVia, direccion.nombreVia]
-    .filter(Boolean).join(" "));
+  const via = [direccion.tipoVia, direccion.nombreVia].filter(Boolean).join(" ");
   const numero = normalizar(direccion.numero);
+  const provincia = normalizar(direccion.provincia);
   const vistos = new Map();
+  const otrosSitios = new Set();
 
   for (const c of lista) {
     if (!c || !esCodigoPostal(c.postalCode)) continue;
-    // Solo del municipio que has escrito: el callejero, cuando no encuentra la
-    // calle, ofrece parecidas de otros sitios sin decírtelo.
-    if (municipio && normalizar(c.muni) !== municipio) continue;
+    // Las dos comprobaciones juntas, que ninguna basta sola: una misma calle
+    // -Mayor, Real, Iglesia- existe en medio país, y dentro de un municipio hay
+    // calles que se parecen entre sí. Tiene que ser tu calle Y tu municipio.
+    if (!mismoMunicipio(c.muni, direccion.municipio)
+        || (provincia && normalizar(c.province) !== provincia)) {
+      // La calle es la tuya pero el pueblo no. Se apunta para poder decirlo:
+      // «Calle Real» sale en media España, y buscándola en Rivas el callejero
+      // contesta con la de Crémenes, en León.
+      if (casaEn(c.address, via) !== null) otrosSitios.add(
+        [c.muni, c.province].filter(Boolean).join(", "));
+      continue;
+    }
     const portal = casaEn(c.address, via);
     if (portal === null) continue;          // es otra calle parecida
     const exacto = !!numero && portal === numero;
@@ -160,8 +197,16 @@ export async function buscarCodigoPostal(direccion, buscar = fetch) {
   const opciones = [...vistos.values()]
     .sort((a, b) => (b.exacto ? 1 : 0) - (a.exacto ? 1 : 0));
   if (!opciones.length) {
-    return { ok: false, motivo: "el callejero no encuentra esa dirección",
-             consulta };
+    const fuera = [...otrosSitios];
+    return {
+      ok: false,
+      motivo: fuera.length
+        ? `esa calle existe, pero en ${fuera.slice(0, 3).join(" y en ")}, `
+          + "no en el municipio que has puesto"
+        : "el callejero no encuentra esa dirección",
+      otrosSitios: fuera,
+      consulta,
+    };
   }
   return { ok: true, opciones, consulta };
 }
