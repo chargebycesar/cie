@@ -111,6 +111,34 @@ def separar_campo(doc, campo, desde_y, nuevo):
     return None
 
 
+def enderezar_recuadros(doc):
+    """Pone del derecho los recuadros que el impreso trae del reves.
+
+    Un /Rect con la y de abajo mayor que la de arriba es valido segun la norma
+    -son dos esquinas, en cualquier orden- pero **hay visores que no dibujan
+    ese campo**: sale en blanco aunque tenga su texto dentro. En el anexo del
+    garaje son cuatro, y son justo los que al usuario le salian vacios: el NIF,
+    su domicilio, el domicilio de la comunidad y el lugar de la firma. MuPDF
+    los pone del derecho al leerlos y por eso aqui se veian bien, que fue lo
+    que despisto.
+    """
+    enderezados = 0
+    for pagina in doc:
+        for w in pagina.widgets():
+            tipo, valor = clave(doc, w.xref, "Rect")
+            if tipo is None:
+                continue
+            n = [float(x) for x in re.findall(r"-?[\d.]+", valor or "")]
+            if len(n) != 4 or (n[2] >= n[0] and n[3] >= n[1]):
+                continue
+            x0, x1 = sorted((n[0], n[2]))
+            y0, y1 = sorted((n[1], n[3]))
+            poner(doc, w.xref, "Rect",
+                  "[ %.4f %.4f %.4f %.4f ]" % (x0, y0, x1, y1))
+            enderezados += 1
+    return enderezados
+
+
 def lineas_horizontales(pagina):
     """Las rayas horizontales dibujadas en la pagina, con su tramo de x."""
     ys = []
@@ -258,7 +286,10 @@ def limpiar(archivo, escritos):
                              aparte["nuevo"]):
                 separados += 1
 
-        # 2) Que campos cuelgan de una pagina, y cuales son casillas
+        # 2) Recuadros del reves, que algunos visores no dibujan
+        enderezados = enderezar_recuadros(doc)
+
+        # 3) Que campos cuelgan de una pagina, y cuales son casillas
         enganchados, raices, orden, casillas = set(), set(), [], set()
         for pagina in doc:
             for w in pagina.widgets():
@@ -271,7 +302,7 @@ def limpiar(archivo, escritos):
                                     pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
                     casillas.update(cadena_hasta_pagina(doc, w.xref))
 
-        # 3) Apariencias mal formadas. En el MTD hay tres campos de la
+        # 4) Apariencias mal formadas. En el MTD hay tres campos de la
         #    cabecera oficial ("Direccion General de", "Etiqueta de Registro",
         #    "Comunidad de Madrid") cuyo dibujo no declara /Type /XObject
         #    /Subtype /Form. Los visores lo perdonan mientras siga siendo un
@@ -296,7 +327,7 @@ def limpiar(archivo, escritos):
                 poner(doc, x, "Subtype", "/Form")
                 remendadas += 1
 
-        # 4) Campos del impreso que tienen que tapar lo que hay debajo.
+        # 5) Campos del impreso que tienen que tapar lo que hay debajo.
         #     En la ultima pagina del MTD, el impreso lleva dibujado el aviso de
         #     proteccion de datos antiguo y encima un campo con el nuevo. El
         #     campo no tapa nada -su dibujo solo traza el recuadro y escribe-,
@@ -337,13 +368,13 @@ def limpiar(archivo, escritos):
                 except Exception:
                     pass
 
-        # 5) Campos descolgados dentro de su casilla (solo el anexo IVE)
+        # 6) Campos descolgados dentro de su casilla (solo el anexo IVE)
         descolgados = 0
         if archivo == "ANEXO_IVE.pdf":
             for pagina in doc:
                 descolgados += centrar_en_su_casilla(doc, pagina)
 
-        # 6) Anotaciones sobrantes pegadas a la pagina. Son los recuadros del
+        # 7) Anotaciones sobrantes pegadas a la pagina. Son los recuadros del
         #     trabajo anterior: ya no son campos de formulario (nadie los
         #     nombra), pero siguen en la lista de anotaciones de la pagina y
         #     por eso siguen dibujando su texto. Vaciar el campo no las quita:
@@ -366,7 +397,7 @@ def limpiar(archivo, escritos):
             doc.xref_set_key(pagina.xref, "Annots",
                              "[ " + " ".join(f"{x} 0 R" for x in quedan) + " ]")
 
-        # 7) Las anotaciones que no son campos se quedan -pueden ser parte del
+        # 8) Las anotaciones que no son campos se quedan -pueden ser parte del
         #     impreso, como el esquema de la segunda pagina del anexo IVE, que
         #     es un sello-, pero sin el rastro de quien las puso.
         firmantes = 0
@@ -384,7 +415,7 @@ def limpiar(archivo, escritos):
                         poner(doc, x, k, "null")
                         firmantes += 1
 
-        # 8) Campos sueltos: los que tienen valor pero no cuelgan de nada.
+        # 9) Campos sueltos: los que tienen valor pero no cuelgan de nada.
         #    Un campo se reconoce por tener /FT o nombre /T. Ojo con no
         #    confundirlos con los nodos del arbol de paginas, que tambien
         #    llevan /Kids y /Parent; por eso se descarta todo lo que sea /Page
@@ -420,7 +451,7 @@ def limpiar(archivo, escritos):
                 poner(doc, x, "V", "null")
             vaciar_dibujo(doc, x)
 
-        # 9) Campos de pagina que rellena el motor: fuera valor y fuera dibujo.
+        # 10) Campos de pagina que rellena el motor: fuera valor y fuera dibujo.
         #    El valor no siempre esta en el widget: en los impresos con nombres
         #    del tipo topmostSubform[0].Page1[0].Campo[0] vive en un padre y el
         #    widget solo lo hereda, asi que hay que subir la cadena. Pero solo
@@ -446,7 +477,7 @@ def limpiar(archivo, escritos):
                         vaciar_dibujo(doc, x)
                 vaciados += 1
 
-        # 10) Firmas electronicas de trabajos anteriores. El campo esta vacio
+        # 11) Firmas electronicas de trabajos anteriores. El campo esta vacio
         #     pero su sello sigue diciendo quien firmo y cuando.
         firmas = 0
         for x in range(1, doc.xref_length()):
@@ -454,7 +485,7 @@ def limpiar(archivo, escritos):
             if ft == "/Sig":
                 firmas += bool(vaciar_firma(doc, x))
 
-        # 11) La lista del formulario, solo con lo que cuelga de una pagina.
+        # 12) La lista del formulario, solo con lo que cuelga de una pagina.
         #    Se cambia la lista dentro del AcroForm que ya hay, sin sustituirlo
         #    entero: ahi vive /DR, el catalogo de fuentes del impreso. Si se
         #    pierde, el visor no sabe con que letra escribir y los campos se
@@ -482,7 +513,7 @@ def limpiar(archivo, escritos):
 
     antes = os.path.getsize(ruta)
     shutil.move(tmp, ruta)
-    print(f"  {archivo:<18} {remendadas:>2} apariencias · {tapadores} tapados · "
+    print(f"  {archivo:<18} {enderezados} enderezados · {remendadas:>2} apariencias · {tapadores} tapados · "
           f"{descolgados} recolocados · {firmantes} rastros · "
           f"{sobrantes:>3} recuadros · "
           f"{sueltos:>3} sueltos · {vaciados:>3} vaciados · {firmas} firmas · "

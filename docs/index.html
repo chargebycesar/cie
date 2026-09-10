@@ -29,6 +29,12 @@
   <strong>Preparando los impresos…</strong> Solo la primera vez.
 </div>
 
+<div id="volver-a-lo-mio" class="alarma aviso" hidden>
+  <strong>Estás con un expediente antiguo.</strong>
+  <span>Se han recuperado los datos de empresa con los que se hizo.</span>
+  <button type="button" id="btn-volver-a-lo-mio">Volver a mis datos de ahora</button>
+</div>
+
 <div id="sin-empresa" class="alarma aviso" hidden>
   <strong>Antes de nada, pon los datos de tu empresa.</strong>
   Se guardan en este navegador y no hay que volver a escribirlos.
@@ -251,8 +257,11 @@
 <section id="panel-expedientes" class="panel">
   <h2>Expedientes generados</h2>
   <p class="ayuda">
-    Se guardan en este navegador. Pulsa uno para volver a cargar sus datos y rehacerlo.
+    Se guardan en este navegador. Pulsa uno para volver a cargar sus datos y
+    rehacerlo. Vuelve con los datos de empresa que tenía cuando se hizo, para
+    que salga igual que el que entregaste.
   </p>
+  <p class="pista" id="aviso-expediente"></p>
   <ul id="lista-expedientes" class="lista"></ul>
   <div class="barra-accion">
     <button class="secundario" id="btn-vaciar-expedientes">Borrar el historial</button>
@@ -324,6 +333,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202609101002"></script>
+<script type="module" src="app.js?v=202609101022"></script>
 </body>
 </html>

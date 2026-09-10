@@ -259,6 +259,27 @@ impreso:
   fuentes. Sin él los campos se quedan mudos. Y en algunos impresos está escrito
   dentro del catálogo en vez de apuntar a un objeto aparte.
 
+### Cuatro recuadros que salían en blanco
+
+En el anexo del garaje, el NIF del cliente, su domicilio, el domicilio de la
+comunidad y el lugar de la firma salían vacíos en algunos visores aunque el
+texto estuviera dentro del PDF. El motivo: esos cuatro recuadros vienen con el
+**rectángulo del revés** —la esquina de abajo por encima de la de arriba—. La
+norma lo permite, pero hay visores que directamente no dibujan ese campo.
+
+Costó dar con ello porque las herramientas de aquí sí los enseñaban: MuPDF los
+pone del derecho al leerlos. Se enderezan en
+`herramientas/limpiar_plantillas.py`, y de paso el ajuste de la letra toma el
+alto en valor absoluto, que con un alto negativo elegía el tamaño mínimo.
+
+### Los expedientes guardan con qué datos se hicieron
+
+Al volver a abrir un expediente de hace meses salía con los datos de empresa de
+hoy, así que el documento ya no era el que se entregó. Ahora cada expediente
+guarda también la empresa, el instalador y los valores de los impresos que
+tenía, y al abrirlo se recuperan. Sale un aviso arriba y un botón para volver a
+tus datos de ahora; tu configuración guardada no se toca.
+
 ### El sello de versión
 
 El navegador se guarda los `.js` y GitHub Pages le dice que puede quedárselos un

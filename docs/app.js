@@ -5,9 +5,9 @@
  * vive en el almacenamiento de este navegador.
  */
 
-import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609101002";
+import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609101022";
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609101002";
+         normalizar } from "./cp.js?v=202609101022";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -62,7 +62,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609101002")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609101022")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -551,6 +551,7 @@ function mostrarResultado(r, datos) {
 
 $("#btn-limpiar").addEventListener("click", () => {
   if (!confirm("¿Vaciar todos los campos del formulario?")) return;
+  if (MIRANDO_ANTIGUO) aplicarConfiguracion(configuracionGuardada(), false);
   form.reset();
   localStorage.removeItem(CLAVE_BORRADOR);
   rellenarListas();
@@ -568,13 +569,55 @@ $("#btn-limpiar").addEventListener("click", () => {
 
 /* ══════════════ expedientes ══════════════ */
 
+/* Lo que hay que guardar con cada expediente ademas de los datos del cliente:
+   con que empresa y con que valores de los impresos se hizo. Si no, al volver
+   a abrirlo meses despues sale con los datos de hoy -otro instalador, otro
+   número de registro- y el documento ya no es el que se entregó. */
+function configuracionDeAhora() {
+  return {
+    empresa: { ...CFG.empresa },
+    valores_fijos_mtd: { ...CFG.valores_fijos_mtd },
+    valores_fijos_cie: { ...CFG.valores_fijos_cie },
+    extras: JSON.parse(JSON.stringify(CFG.extras || {})),
+  };
+}
+
 function guardarExpediente(carpeta, datos, identificador) {
   const lista = leer(CLAVE_EXPEDIENTES, []);
   const sinEste = lista.filter(x => x.carpeta !== carpeta);
   sinEste.unshift({ carpeta, datos, identificador: identificador || "",
+                    config: configuracionDeAhora(),
                     cuando: new Date().toISOString() });
   escribir(CLAVE_EXPEDIENTES, sinEste.slice(0, 60));
   pintarExpedientes();
+}
+
+/* La configuración que es tuya de verdad, la que está guardada. Se usa para
+   volver a ella cuando dejas de mirar un expediente antiguo. */
+function configuracionGuardada() {
+  const g = leer(CLAVE_AJUSTES, null) || {};
+  return {
+    empresa: g.empresa || {},
+    valores_fijos_mtd: g.valores_fijos_mtd || {},
+    valores_fijos_cie: g.valores_fijos_cie || {},
+    extras: g.extras || {},
+  };
+}
+
+let MIRANDO_ANTIGUO = false;
+
+function aplicarConfiguracion(c, antiguo) {
+  if (!c) return false;
+  CFG.empresa = { ...CFG.empresa, ...c.empresa };
+  CFG.valores_fijos_mtd = { ...CFG.valores_fijos_mtd, ...c.valores_fijos_mtd };
+  CFG.valores_fijos_cie = { ...CFG.valores_fijos_cie, ...c.valores_fijos_cie };
+  if (c.extras) CFG.extras = JSON.parse(JSON.stringify(c.extras));
+  MIRANDO_ANTIGUO = !!antiguo;
+  pintarConfigEmpresa();
+  pintarPestanasDoc();
+  pintarPanelDoc();
+  $("#volver-a-lo-mio").hidden = !antiguo;
+  return true;
 }
 
 function pintarExpedientes() {
@@ -585,7 +628,14 @@ function pintarExpedientes() {
     const li = document.createElement("li");
     const b = document.createElement("button");
     b.textContent = x.carpeta.replace(/_/g, " ");
-    b.addEventListener("click", () => cargarDatos(x.datos));
+    b.addEventListener("click", () => {
+      cargarDatos(x.datos);
+      const hay = aplicarConfiguracion(x.config, true);
+      avisar("#aviso-expediente", hay
+        ? "Recuperado con los datos de empresa que tenía cuando se hizo."
+        : "Este expediente es de antes de guardar la empresa: sale con los "
+          + "datos de ahora.", 6000);
+    });
     li.appendChild(b);
     ul.appendChild(li);
   });
@@ -638,12 +688,17 @@ function pintarCodigosPostales() {
     : '<span class="pista">Todavía no ha aprendido ninguna.</span>';
 }
 
-function avisar(donde, texto) {
+function avisar(donde, texto, cuanto = 5000) {
   const c = $(donde);
   if (!c) return;
   c.textContent = texto;
-  setTimeout(() => { c.textContent = ""; }, 5000);
+  setTimeout(() => { c.textContent = ""; }, cuanto);
 }
+
+$("#btn-volver-a-lo-mio").addEventListener("click", () => {
+  aplicarConfiguracion(configuracionGuardada(), false);
+  avisar("#aviso-config", "Vuelven tus datos de ahora.");
+});
 
 $("#btn-guardar-config").addEventListener("click", () => {
   $$("[data-empresa]").forEach(i => { CFG.empresa[i.dataset.empresa] = i.value; });
@@ -723,7 +778,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609101002")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609101022")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
