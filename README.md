@@ -259,6 +259,14 @@ impreso:
   fuentes. Sin él los campos se quedan mudos. Y en algunos impresos está escrito
   dentro del catálogo en vez de apuntar a un objeto aparte.
 
+### El recuadro del sello del CIE va vacío
+
+El CIE lleva arriba a la derecha un recuadro de **Sello y fecha EICI**: es donde
+firma y sella la EICI, así que sale en blanco. La hoja de cálculo original
+escribía ahí «COMPLETADO» o «FALTAN DATOS» para avisarte de si ya podías
+imprimir; ese aviso sigue estando, pero **en la pantalla**, junto al documento
+generado, no dentro del papel que entregas.
+
 ### Cuatro recuadros que salían en blanco
 
 En el anexo del garaje, el NIF del cliente, su domicilio, el domicilio de la

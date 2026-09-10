@@ -97,7 +97,11 @@ export async function generarCie(celdas, textoCups, cargarPlantilla, lib, moment
   const ident = identificador(momento);
   const { texto: textoEstado } = estado(mapa, todas);
 
-  const calculadas = { R6: ident, R4: textoEstado, M19: textoCups };
+  // R4 -el «COMPLETADO» / «FALTAN DATOS»- NO se dibuja: ese recuadro es el del
+  // sello y la fecha de la EICI, y va en blanco para que lo firmen ellos. Era
+  // un aviso de la hoja de cálculo, para saber si ya se podía imprimir, y eso
+  // se enseña en la pantalla, no en el documento que se entrega.
+  const calculadas = { R6: ident, M19: textoCups };
   const paginas = doc.getPages();
 
   for (const [celda, valor] of Object.entries({ ...todas, ...calculadas })) {
