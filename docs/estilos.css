@@ -268,3 +268,61 @@ button.enlace:hover{color:#0f4396}
 .buscar-cp[disabled]{opacity:.55;cursor:default}
 #aviso-cp{margin:6px 0 0}
 #aviso-cp.error{color:var(--error)}
+
+/* ── Mapa visual del impreso: la hoja con sus huecos rellenables encima ── */
+.mapa-impreso{margin-top:12px}
+.barra-mapa{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
+.barra-mapa input{flex:1;min-width:180px}
+.barra-mapa .zoom{display:flex;gap:4px}
+.barra-mapa .zoom button{
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:6px;
+  padding:5px 9px;font-size:12px;cursor:pointer;color:var(--texto);font-family:inherit;
+}
+.barra-mapa .zoom button.activa{background:var(--acento-claro);border-color:var(--acento);color:var(--acento)}
+.leyenda-huecos{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--suave);margin:0 0 8px}
+.leyenda-huecos span::before{
+  content:"";display:inline-block;width:14px;height:10px;margin-right:5px;vertical-align:-1px;
+  border:1px dashed rgba(21,83,182,.45);background:rgba(21,83,182,.06);border-radius:2px;
+}
+.leyenda-huecos .l-mio::before{background:var(--ok-fondo);border:1.5px solid var(--ok)}
+.leyenda-huecos .l-app::before{background:rgba(21,83,182,.16);border:1px solid var(--acento)}
+.paginas-impreso{overflow:auto;max-height:78vh;border:1px solid var(--borde);border-radius:var(--radio);background:var(--fondo);padding:10px}
+.pagina-impreso{
+  position:relative;margin:0 auto 14px;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.12);width:100%;
+}
+.pagina-impreso img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.pagina-impreso .num-pagina{
+  position:absolute;top:-1px;left:-1px;background:var(--texto);color:#fff;
+  font-size:11px;padding:2px 7px;border-radius:0 0 6px 0;z-index:2;
+}
+.hueco{
+  position:absolute;box-sizing:border-box;min-width:6px;min-height:6px;
+  border:1px dashed rgba(21,83,182,.45);background:rgba(21,83,182,.06);
+  padding:0 2px;margin:0;cursor:pointer;font-family:inherit;
+  font-size:9px;line-height:1.1;color:var(--ok);text-align:left;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;
+}
+.hueco:hover{background:rgba(21,83,182,.18);border-style:solid;z-index:1}
+.hueco.mio{background:var(--ok-fondo);border:1.5px solid var(--ok);font-weight:600}
+.hueco.app{background:rgba(21,83,182,.16);border:1px solid var(--acento)}
+.hueco.app.mio{background:var(--aviso-fondo);border:1.5px solid var(--aviso);color:var(--aviso)}
+.hueco.coincide{outline:3px solid var(--aviso);outline-offset:1px;z-index:1}
+.hueco.abierto{outline:3px solid var(--acento);outline-offset:1px;z-index:3}
+.popover-hueco{
+  position:absolute;z-index:6;width:300px;max-width:92%;background:var(--tarjeta);
+  border:1px solid var(--borde);border-radius:var(--radio);
+  box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;font-size:13px;
+}
+.popover-hueco .titulo{font-weight:600;margin:0 0 2px}
+.popover-hueco .nombre{color:var(--suave);font-size:11px;word-break:break-all;margin:0 0 8px}
+.popover-hueco input[type=text]{width:100%;margin:0 0 8px}
+.popover-hueco .casilla{margin:0 0 8px}
+.popover-hueco .aviso-app{
+  background:var(--aviso-fondo);color:var(--aviso);border-radius:6px;
+  padding:6px 8px;font-size:12px;margin:0 0 8px;
+}
+.popover-hueco .botones{display:flex;gap:6px;flex-wrap:wrap}
+.popover-hueco .botones button{padding:6px 10px;font-size:12px}
+.popover-hueco .quitar{margin-left:auto;color:var(--error)}
+.sin-mapa{padding:14px;color:var(--suave);font-size:13px}

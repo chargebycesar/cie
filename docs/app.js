@@ -5,9 +5,9 @@
  * vive en el almacenamiento de este navegador.
  */
 
-import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609101105";
+import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609110953";
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609101105";
+         normalizar } from "./cp.js?v=202609110953";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -62,7 +62,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609101105")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609110953")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -87,7 +87,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   pintarConfigEmpresa();
   pintarPestanasDoc();
   pintarPanelDoc();
-  pintarCodigosPostales();
   pintarExpedientes();
   ponerFechaHoy();
   restaurarBorrador();
@@ -303,7 +302,7 @@ $$(".buscar-cp").forEach(boton => {
       r.opciones.forEach(o => {
         cambio = apuntarCodigo(`${normalizar(o.municipio)}|`, o.cp) || cambio;
       });
-      if (cambio) { guardarAjustes(); pintarLocalidades(); pintarCodigosPostales(); }
+      if (cambio) { guardarAjustes(); pintarLocalidades(); }
       pintarSugerencias(pre);
       // Se enseña la dirección y el municipio con los que ha contestado, para
       // que se vea que es tu calle y tu pueblo: la misma calle existe en medio
@@ -342,7 +341,7 @@ function aprenderCodigosPostales() {
     cambio = apuntarCodigo(claveDe(pre), cp) || cambio;
     if (municipio) cambio = apuntarCodigo(`${municipio}|`, cp) || cambio;
   }
-  if (cambio) { guardarAjustes(); pintarLocalidades(); pintarCodigosPostales(); }
+  if (cambio) { guardarAjustes(); pintarLocalidades(); }
 }
 
 /* ══════════════ mostrar y ocultar ══════════════ */
@@ -672,21 +671,6 @@ function pintarConfigEmpresa() {
   });
 }
 
-function pintarCodigosPostales() {
-  const caja = $("#bloque-cps");
-  const guardados = libreta();
-  // Las entradas que acaban en «|» son solo del municipio: se guardan para
-  // sugerir, pero no rellenan nada. Aquí se enseñan las calles, que son las
-  // que sirven.
-  const calles = Object.keys(guardados).filter(k => !k.endsWith("|")).sort();
-  caja.innerHTML = calles.length
-    ? calles.map(k => {
-      const [municipio, via] = k.split("|");
-      return `<span class="cp"><b>${escapar(guardados[k])}</b> `
-        + `${escapar(via)} · ${escapar(municipio)}</span>`;
-    }).join("")
-    : '<span class="pista">Todavía no ha aprendido ninguna.</span>';
-}
 
 function avisar(donde, texto, cuanto = 5000) {
   const c = $(donde);
@@ -778,7 +762,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609101105")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609110953")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -875,46 +859,17 @@ async function pintarPanelDoc() {
     zona.appendChild(fila);
   });
 
-  const anadir = document.createElement("div");
-  anadir.className = "anadir-extra";
   if (doc.id === "CIE") {
+    const anadir = document.createElement("div");
+    anadir.className = "anadir-extra";
     anadir.innerHTML = '<input id="extra-nombre" placeholder="Celda, p. ej. A28">'
       + '<input id="extra-valor" placeholder="Lo que debe poner">'
       + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
-  } else {
-    const libres = campos.filter(c => !(c.n in mios) && c.t !== "otro");
-    const opciones = libres.map(c => {
-      const texto = (c.e ? c.e + " — " : "") + c.n + " · pág. " + c.p
-        + (c.t === "casilla" ? " · casilla" : "");
-      return '<option value="' + escapar(c.n) + '">' + escapar(texto) + "</option>";
-    }).join("");
-    // Un impreso puede tener 1.600 campos: sin un buscador no hay quien
-    // encuentre el suyo en el desplegable.
-    anadir.innerHTML = '<input id="extra-buscar" placeholder="Buscar…">'
-      + '<select id="extra-nombre"><option value="">'
-      + "Elige un campo (" + libres.length + ")</option>" + opciones + "</select>"
-      + '<input id="extra-valor" placeholder="Lo que debe poner">'
-      + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
+    zona.appendChild(anadir);
   }
-  zona.appendChild(anadir);
   caja.appendChild(zona);
-
-  const buscar = $("#extra-buscar");
-  if (buscar) {
-    const sel = $("#extra-nombre");
-    const todas = [...sel.options];
-    buscar.addEventListener("input", () => {
-      const q = buscar.value.trim().toLowerCase();
-      const vistas = q
-        ? todas.filter((o, i) => i === 0 || o.textContent.toLowerCase().includes(q))
-        : todas;
-      sel.innerHTML = "";
-      vistas.forEach(o => sel.appendChild(o));
-      vistas[0].textContent = q
-        ? "Elige un campo (" + (vistas.length - 1) + " de " + (todas.length - 1) + ")"
-        : "Elige un campo (" + (todas.length - 1) + ")";
-    });
-  }
+  // Para los impresos con formulario: la hoja con sus huecos, para pinchar el que sea
+  if (doc.id !== "CIE") caja.appendChild(await mapaVisual(doc, campos, mios));
 
   zona.querySelectorAll("[data-quitar]").forEach(b => {
     b.addEventListener("click", () => {
@@ -925,7 +880,8 @@ async function pintarPanelDoc() {
     });
   });
 
-  $("#btn-anadir-extra").addEventListener("click", () => {
+  const btnAnadir = $("#btn-anadir-extra");
+  if (btnAnadir) btnAnadir.addEventListener("click", () => {
     const nombre = ($("#extra-nombre").value || "").trim();
     const valor = ($("#extra-valor").value || "").trim();
     if (!nombre) { avisar("#aviso-doc", "Elige antes un campo."); return; }
@@ -941,6 +897,192 @@ async function pintarPanelDoc() {
     pintarPanelDoc();
     avisar("#aviso-doc", "Añadido.");
   });
+}
+
+/* ══════════════ la hoja con sus huecos ══════════════ */
+
+/* Tamaño en puntos de cada página del impreso (lo escribe indice_campos.py). */
+async function paginasDelImpreso(archivo) {
+  await camposDelImpreso(archivo);
+  return ((CAMPOS_IMPRESOS || {})._paginas || {})[archivo] || [];
+}
+
+let ZOOM_MAPA = 1;
+const ZOOMS = [1, 1.5, 2];
+
+function textoHueco(c, valor) {
+  if (valor === undefined) return "";
+  if (valor === true) return "✓";
+  if (valor === false) return "—";
+  return String(valor);
+}
+
+function tituloHueco(c, valor) {
+  const partes = [];
+  if (c.e) partes.push(c.e);
+  partes.push(c.n + " · pág. " + c.p + (c.t === "casilla" ? " · casilla" : ""));
+  if (c.a) partes.push("Lo rellena la aplicación con los datos del expediente");
+  if (valor !== undefined) partes.push("Tú has puesto: " + textoHueco(c, valor));
+  return partes.join("\n");
+}
+
+/* La hoja de cada página con un botón encima de cada hueco rellenable. Las
+   posiciones vienen en puntos del PDF y se pasan a porcentaje, así la hoja
+   puede ampliarse o encogerse sin recalcular nada. */
+async function mapaVisual(doc, campos, mios) {
+  const raiz = document.createElement("div");
+  raiz.className = "mapa-impreso";
+  const paginas = await paginasDelImpreso(doc.id);
+  const base = doc.id.replace(/\.pdf$/i, "");
+  if (!paginas.length || !campos.some(c => c.w)) {
+    raiz.innerHTML = '<p class="sin-mapa">No tengo la hoja de este impreso. '
+      + "Ejecuta <code>python herramientas/indice_campos.py</code> y vuelve a publicar.</p>";
+    return raiz;
+  }
+
+  raiz.innerHTML = '<div class="barra-mapa">'
+    + '<input id="hueco-buscar" placeholder="Buscar un hueco por lo que pone al lado o por su nombre…">'
+    + '<span id="hueco-cuenta" class="pista"></span>'
+    + '<div class="zoom">' + ZOOMS.map(z => '<button type="button" data-zoom="' + z + '"'
+      + (z === ZOOM_MAPA ? ' class="activa"' : "") + ">" + Math.round(z * 100) + " %</button>").join("")
+    + "</div></div>"
+    + '<div class="leyenda-huecos"><span>Hueco libre: pincha y escribe</span>'
+    + '<span class="l-mio">Lo has puesto tú</span>'
+    + '<span class="l-app">Lo rellena la aplicación</span></div>';
+
+  const contenedor = document.createElement("div");
+  contenedor.className = "paginas-impreso";
+  paginas.forEach(([anchoPt, altoPt], i) => {
+    const num = i + 1;
+    const pag = document.createElement("div");
+    pag.className = "pagina-impreso";
+    pag.dataset.pagina = String(num);
+    pag.style.width = Math.round(ZOOM_MAPA * 100) + "%";
+    pag.innerHTML = '<span class="num-pagina">Página ' + num + "</span>"
+      + '<img src="plantillas/img/' + escapar(base) + "-" + num + '.png" alt="Página ' + num
+      + " de " + escapar(doc.titulo) + '" loading="lazy" draggable="false">';
+    campos.filter(c => c.p === num && c.w).forEach(c => {
+      const valor = mios[c.n];
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "hueco" + (c.a ? " app" : "") + (valor !== undefined ? " mio" : "");
+      b.dataset.hueco = c.n;
+      b.style.left = (c.x / anchoPt * 100).toFixed(3) + "%";
+      b.style.top = (c.y / altoPt * 100).toFixed(3) + "%";
+      b.style.width = (c.w / anchoPt * 100).toFixed(3) + "%";
+      b.style.height = (c.h / altoPt * 100).toFixed(3) + "%";
+      b.title = tituloHueco(c, valor);
+      b.textContent = textoHueco(c, valor);
+      b.addEventListener("click", e => { e.stopPropagation(); abrirHueco(doc, c, pag, b); });
+      pag.appendChild(b);
+    });
+    contenedor.appendChild(pag);
+  });
+  raiz.appendChild(contenedor);
+
+  // zoom
+  raiz.querySelectorAll("[data-zoom]").forEach(b => b.addEventListener("click", () => {
+    ZOOM_MAPA = Number(b.dataset.zoom);
+    raiz.querySelectorAll("[data-zoom]").forEach(x => x.classList.toggle("activa", x === b));
+    contenedor.querySelectorAll(".pagina-impreso").forEach(p => { p.style.width = Math.round(ZOOM_MAPA * 100) + "%"; });
+  }));
+
+  // buscador: resalta los huecos que encajan y lleva al primero
+  const buscar = raiz.querySelector("#hueco-buscar");
+  const cuenta = raiz.querySelector("#hueco-cuenta");
+  const porNombre = {};
+  campos.forEach(c => { porNombre[c.n] = c; });
+  buscar.addEventListener("input", () => {
+    const q = buscar.value.trim().toLowerCase();
+    let primero = null, n = 0;
+    contenedor.querySelectorAll(".hueco").forEach(b => {
+      const c = porNombre[b.dataset.hueco] || {};
+      const encaja = q && ((c.e || "").toLowerCase().includes(q) || c.n.toLowerCase().includes(q)
+        || String(mios[c.n] === undefined ? "" : mios[c.n]).toLowerCase().includes(q));
+      b.classList.toggle("coincide", !!encaja);
+      if (encaja) { n++; if (!primero) primero = b; }
+    });
+    cuenta.textContent = q ? (n ? n + (n === 1 ? " hueco" : " huecos") : "Ninguno") : "";
+    if (primero) primero.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
+
+  // pinchar fuera cierra la ventanita
+  contenedor.addEventListener("click", cerrarHueco);
+  return raiz;
+}
+
+function cerrarHueco() {
+  $$(".popover-hueco").forEach(p => p.remove());
+  $$(".hueco.abierto").forEach(b => b.classList.remove("abierto"));
+}
+
+/* La ventanita para escribir lo que va en un hueco. Guarda al momento. */
+function abrirHueco(doc, c, pag, boton) {
+  cerrarHueco();
+  boton.classList.add("abierto");
+  const mios = (CFG.extras || (CFG.extras = {}))[doc.id] || (CFG.extras[doc.id] = {});
+  const valor = mios[c.n];
+  const casilla = c.t === "casilla" || typeof valor === "boolean";
+  const pop = document.createElement("div");
+  pop.className = "popover-hueco";
+  pop.innerHTML = '<p class="titulo">' + escapar(c.e || (casilla ? "Casilla" : "Hueco de texto")) + "</p>"
+    + '<p class="nombre">' + escapar(c.n) + " · pág. " + c.p + "</p>"
+    + (c.a ? '<p class="aviso-app">Este hueco lo rellena la aplicación con los datos de cada '
+      + "expediente. Si escribes algo, lo sustituirá en todos.</p>" : "")
+    + (casilla
+      ? '<label class="casilla"><input type="checkbox" id="hueco-valor"' + (valor === true ? " checked" : "") + "> marcada</label>"
+      : '<input type="text" id="hueco-valor" placeholder="Lo que debe poner" value="' + escapar(valor === undefined ? "" : String(valor)) + '">')
+    + '<div class="botones"><button type="button" class="principal" id="hueco-guardar">Guardar</button>'
+    + '<button type="button" class="secundario" id="hueco-cerrar">Cerrar</button>'
+    + (valor !== undefined ? '<button type="button" class="secundario quitar" id="hueco-quitar">Quitar</button>' : "")
+    + "</div>";
+  // debajo del hueco, sin salirse de la hoja
+  const izquierda = Math.max(0, Math.min(boton.offsetLeft, pag.clientWidth - 310));
+  pop.style.left = izquierda + "px";
+  pop.style.top = (boton.offsetTop + boton.offsetHeight + 4) + "px";
+  pop.addEventListener("click", e => e.stopPropagation());
+  pag.appendChild(pop);
+
+  const guardarHueco = () => {
+    guardarPanelDoc(); // lo que haya escrito en los valores fijos no se pierde
+    const campo = pop.querySelector("#hueco-valor");
+    if (casilla) mios[c.n] = campo.checked;
+    else {
+      const texto = campo.value.trim();
+      if (texto === "") delete mios[c.n]; else mios[c.n] = texto;
+    }
+    guardarAjustes();
+    repintarPanelDoc();
+    avisar("#aviso-doc", "Guardado.");
+  };
+  pop.querySelector("#hueco-guardar").addEventListener("click", guardarHueco);
+  pop.querySelector("#hueco-cerrar").addEventListener("click", cerrarHueco);
+  const quitar = pop.querySelector("#hueco-quitar");
+  if (quitar) quitar.addEventListener("click", () => {
+    guardarPanelDoc();
+    delete mios[c.n];
+    guardarAjustes();
+    repintarPanelDoc();
+    avisar("#aviso-doc", "Quitado.");
+  });
+  const entrada = pop.querySelector("#hueco-valor");
+  entrada.focus();
+  entrada.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); guardarHueco(); }
+    if (e.key === "Escape") cerrarHueco();
+  });
+  pop.scrollIntoView({ block: "nearest" });
+}
+
+/* Vuelve a pintar el panel sin perder el sitio por el que ibas en la hoja. */
+async function repintarPanelDoc() {
+  const lista = $(".paginas-impreso");
+  const desplazamiento = lista ? lista.scrollTop : 0;
+  const ventana = window.scrollY;
+  await pintarPanelDoc();
+  const nueva = $(".paginas-impreso");
+  if (nueva) nueva.scrollTop = desplazamiento;
+  window.scrollTo(0, ventana);
 }
 
 /* Recoge lo que hay escrito en el panel. Se llama al guardar y también al
@@ -1011,7 +1153,7 @@ $("#fichero-importar").addEventListener("change", async e => {
     if (Array.isArray(c.expedientes)) escribir(CLAVE_EXPEDIENTES, c.expedientes);
     guardarAjustes();
     pintarConfigEmpresa(); pintarPestanasDoc(); pintarPanelDoc();
-    pintarCodigosPostales(); pintarLocalidades();
+    pintarLocalidades();
     pintarExpedientes(); aplicarValoresTecnicos(CFG.tecnica); recalcular();
     avisar("#aviso-copia", "Copia restaurada.");
     $("#sin-empresa").hidden = !!(CFG.empresa.razon_social || "").trim();

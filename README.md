@@ -116,7 +116,7 @@ lo devuelves.
 | `servidor.py`, `web/` | La versión de escritorio. **Su pantalla se quedó atrás** (le faltan campos que sí están en `docs/`). El motor sí está al día. Usa la del navegador. |
 | `config.json`, `prueba.json` | Tus datos y un expediente de prueba. **No se suben al repositorio.** Junto a ellos están `config.ejemplo.json` y `prueba.ejemplo.json`, que sí, con los datos en blanco. |
 | `publicar.bat` | Sube la aplicación a GitHub. Doble clic. Antes de subir pone el sello de versión y comprueba que no se cuela ningún dato personal. |
-| `docs/plantillas/campos.json` | La lista de campos de cada impreso con su etiqueta, para poder elegirlos desde Configuración. |
+| `docs/plantillas/campos.json`, `docs/plantillas/img/` | Los huecos de cada impreso (dónde están, qué tamaño tienen, qué pone al lado y si los rellena la aplicación) y la imagen de cada página, para poder pincharlos sobre la hoja desde Configuración. |
 | `herramientas/` | Preparación de los impresos y comprobaciones. Solo se usa si cambia un impreso oficial. |
 | `empaquetar/` | Instalador y firma de código, por si algún día se vende. |
 | `CONSEJO-multicomunidad.md` | Cómo llevar esto a las otras comunidades. |
@@ -153,19 +153,26 @@ En **Configuración** hay una pestaña por impreso. Cada una trae dos cosas:
 - **Lo que la aplicación pone siempre**, ya relleno con lo de un punto de
   recarga corriente: tipo de acometida, módulo, puesta a tierra, presupuesto,
   qué documentación se adjunta... Se cambia ahí y se queda para los siguientes.
-- **Cualquier otro campo del impreso.** Se elige de una lista con buscador —que
-  dice lo que pone escrito al lado de cada campo y en qué página está— y se le
-  da el valor. Para una casilla, «sí» o «no».
+- **Cualquier otro hueco del impreso.** Debajo aparece **la hoja tal cual**,
+  con cada hueco rellenable dibujado encima. Se pincha el que sea, se escribe
+  lo que debe poner (o se marca la casilla) y se guarda al momento. En verde,
+  lo que has puesto tú; en azul, lo que la aplicación rellena sola con los
+  datos del expediente (se puede escribir encima, pero avisa). Hay buscador
+  —por lo que pone al lado o por el nombre del campo— que resalta los huecos
+  que encajan y te lleva al primero, y zoom al 150 y 200 % para los impresos
+  de letra pequeña. El CIE, que no es un formulario sino una hoja de cálculo,
+  sigue por celdas (A28, B43...).
 
 Así, cuando un expediente pida algo que la aplicación no rellena, **no hay que
 tocar el programa**.
 
-La lista de campos sale de `herramientas/indice_campos.py`, que recorre cada
-impreso y apunta el nombre del campo, su página y el texto que tiene al lado
-—que es lo único por lo que una persona puede reconocerlo—. En la solicitud
-encuentra rótulo para 165 de 175 campos; en el MTD solo para 52 de 1.631,
-porque allí los rótulos son dibujos y no texto, así que esos van por página y
-posición. Hay que volver a ejecutarlo si Industria cambia un impreso.
+Los huecos y las imágenes salen de `herramientas/indice_campos.py`, que
+recorre cada impreso, dibuja cada página a imagen y apunta de cada campo dónde
+está y qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena
+la aplicación. Antes esto era una lista de nombres (`Texto354`,
+`CampoTexto26[0]`), que en el MTD, con 1.631 campos y los rótulos dibujados en
+vez de escritos, no había quien reconociera; sobre la hoja se ve dónde está
+cada uno. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
 ### El esquema unifilar
 
