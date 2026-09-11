@@ -32,6 +32,9 @@ PATRONES = [
     re.compile(r'(from\s+"\./[\w.-]+\.js)(\?v=[\w.-]+)?(")'),
     # <script type="module" src="app.js">
     re.compile(r'(src="[\w.-]+\.js)(\?v=[\w.-]+)?(")'),
+    # <link rel="stylesheet" href="estilos.css">, que tambien se cachea: sin
+    # esto un cambio de estilo no se ve hasta que el navegador se digna.
+    re.compile(r'(href="[\w.-]+\.css)(\?v=[\w.-]+)?(")'),
     # fetch("config-inicial.json") y fetch("plantillas/campos.json")
     re.compile(r'(fetch\("[\w./-]+\.json)(\?v=[\w.-]+)?(")'),
 ]
