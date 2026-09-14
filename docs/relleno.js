@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202609111012";
+import { mayus } from "./util.js?v=202609141345";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
@@ -66,6 +66,20 @@ function ajustarTamano(campo, texto, helvetica, color = "0 g") {
     catch (e) { /* si no se deja, se queda como estaba */ }
   }
   try { campo.setFontSize(tam); } catch (e) { /* si no se deja, da igual */ }
+}
+
+/* Deja el campo en negro para lo que se escriba después, sin tocar el dibujo
+   que ya está hecho. El dibujo es lo que el visor enseña; el /DA es lo que usa
+   cuando alguien teclea dentro. */
+function devolverElNegro(campo) {
+  for (const w of campo.acroField.getWidgets()) {
+    try {
+      const da = w.getDefaultAppearance() || "";
+      w.setDefaultAppearance(
+        da.replace(/[\d.]+\s+[\d.]+\s+[\d.]+\s+rg/, "0 g") || "/Helv 9 Tf 0 g");
+    } catch (e) { /* si no se deja, se queda como estaba */ }
+  }
+  try { campo.acroField.setDefaultAppearance("/Helv 9 Tf 0 g"); } catch (e) { /* igual */ }
 }
 
 /* Saca del documento los campos que cumplan la condición: fuera de las páginas
@@ -159,6 +173,7 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
       continue;
     }
     const texto = mayus(valor, cfg);
+    let esPista = false;
     try {
       if (texto) {
         // Solo el texto, sin tocar el fondo. Antes se pintaba de blanco para
@@ -174,6 +189,7 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
         const pista = mayus(pistas[nombre], cfg);
         campo.setText(pista);
         ajustarTamano(campo, pista, helvetica, `${GRIS_PISTA.join(" ")} rg`);
+        esPista = true;
       } else {
         campo.setText("");
       }
@@ -185,6 +201,13 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
       try {
         campo.updateAppearances(helvetica);
       } catch (e) { /* si no se puede, queda el NeedAppearances de abajo */ }
+
+      // El gris de la leyenda es solo para el dibujo. En cuanto está hecho, se
+      // le devuelve el negro al campo: así, cuando el cliente escriba encima,
+      // lo suyo sale del mismo color que el resto del documento y no en gris
+      // de aviso. El visor usa el dibujo para enseñarlo y el /DA para lo que
+      // se teclea, así que valen los dos a la vez.
+      if (esPista) devolverElNegro(campo);
       escritos += 1;
     } catch (e) {
       noEncontrados.push(nombre);

@@ -565,6 +565,7 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
     """
     casillas = casillas or {}
     doc = pymupdf.open(plantilla)
+    negros = []          # leyendas: dibujo gris, escritura en negro
     escritos, no_encontrados = 0, set(mapa) | set(casillas)
     pendientes, vaciar = [], []
 
@@ -594,6 +595,11 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
                     w.text_color = GRIS_PISTA
                     _ajustar_tamano(w, pista)
                     w.update()
+                    # El gris es solo para el dibujo, que ya esta hecho. Se le
+                    # devuelve el negro al campo para que, cuando el cliente
+                    # escriba encima, lo suyo salga del mismo color que el
+                    # resto del documento y no en gris de aviso.
+                    negros.append(w.xref)
                     try:
                         doc.xref_set_key(w.xref, "TU",
                                          pymupdf.get_pdf_str(t(pistas[nombre])))
@@ -612,6 +618,18 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
             escritos += 1
         else:
             no_encontrados.add(nombre)
+
+    # El /DA de las leyendas vuelve al negro. El visor usa el dibujo para
+    # ensenarlas y el /DA para lo que se teclea encima, asi que valen los dos.
+    for xref in negros:
+        tipo, da = doc.xref_get_key(xref, "DA")
+        if tipo is None:
+            continue
+        limpio = re.sub(r"[\d.]+ [\d.]+ [\d.]+ rg", "0 g", str(da).strip("()"))
+        try:
+            doc.xref_set_key(xref, "DA", pymupdf.get_pdf_str(limpio))
+        except Exception:  # noqa: BLE001
+            pass
 
     # Tercera pasada: borrar el valor y la apariencia de los campos vacios.
     for xref in vaciar:

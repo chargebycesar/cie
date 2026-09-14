@@ -266,6 +266,19 @@ impreso:
   fuentes. Sin él los campos se quedan mudos. Y en algunos impresos está escrito
   dentro del catálogo en vez de apuntar a un objeto aparte.
 
+### Las leyendas grises no tiñen lo que escribe el cliente
+
+En el anexo del garaje hay huecos que rellena el cliente, y salen con una
+leyenda en gris diciendo qué va en cada uno. El problema: al escribir encima,
+lo suyo salía también en gris, como si fuera otra leyenda.
+
+Se arregla separando las dos cosas. El **dibujo** del campo se genera en gris
+—que es lo que se ve— y justo después se le devuelve el negro al campo. El
+visor usa el dibujo para enseñarlo y el `/DA` para lo que se teclea dentro, así
+que valen los dos a la vez: la leyenda se ve gris y lo que escribe el cliente
+sale negro, como el resto del documento. Sin JavaScript dentro del PDF, que no
+todos los visores lo ejecutan.
+
 ### El recuadro del sello del CIE va vacío
 
 El CIE lleva arriba a la derecha un recuadro de **Sello y fecha EICI**: es donde
