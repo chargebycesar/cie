@@ -5,9 +5,9 @@
  * vive en el almacenamiento de este navegador.
  */
 
-import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609161323";
+import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609161335";
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609161323";
+         normalizar } from "./cp.js?v=202609161335";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -49,7 +49,8 @@ const escribir = (clave, valor) => {
 
 function guardarAjustes() {
   return escribir(CLAVE_AJUSTES, {
-    empresa: CFG.empresa,
+    empresas: CFG.empresas,
+    empresa_activa: CFG.empresa_activa,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
     valores_fijos_mtd: CFG.valores_fijos_mtd,
@@ -62,15 +63,15 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609161323")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609161335")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
     return;
   }
   const guardado = leer(CLAVE_AJUSTES, null);
+  prepararEmpresas(guardado);
   if (guardado) {
-    CFG.empresa = { ...CFG.empresa, ...guardado.empresa };
     CFG.tecnica = { ...CFG.tecnica, ...guardado.tecnica };
     CFG.codigos_postales = { ...CFG.codigos_postales, ...guardado.codigos_postales };
     // Los valores de cada impreso se mezclan con los de fábrica, no los
@@ -85,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (migrarLibreta()) guardarAjustes();
   pintarLocalidades();
   pintarConfigEmpresa();
+  pintarSelectorEmpresa();
   pintarPestanasDoc();
   pintarPanelDoc();
   pintarExpedientes();
@@ -94,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Se traen los impresos por adelantado para que generar sea instantáneo
   precargar();
-  $("#sin-empresa").hidden = !!(CFG.empresa.razon_social || "").trim();
+  avisarFaltaEmpresa();
 });
 
 async function precargar() {
@@ -595,8 +597,10 @@ function guardarExpediente(carpeta, datos, identificador) {
    volver a ella cuando dejas de mirar un expediente antiguo. */
 function configuracionGuardada() {
   const g = leer(CLAVE_AJUSTES, null) || {};
+  const lista = Array.isArray(g.empresas) ? g.empresas
+                                          : (g.empresa ? [g.empresa] : []);
   return {
-    empresa: g.empresa || {},
+    empresa: lista.find(e => e.id === g.empresa_activa) || lista[0] || {},
     valores_fijos_mtd: g.valores_fijos_mtd || {},
     valores_fijos_cie: g.valores_fijos_cie || {},
     extras: g.extras || {},
@@ -607,12 +611,16 @@ let MIRANDO_ANTIGUO = false;
 
 function aplicarConfiguracion(c, antiguo) {
   if (!c) return false;
-  CFG.empresa = { ...CFG.empresa, ...c.empresa };
+  // Mirando un expediente antiguo se trabaja sobre una copia suelta: así sus
+  // datos de entonces no se cuelan en la empresa que tienes guardada. Al volver
+  // a lo tuyo se apunta otra vez a la de la lista.
+  MIRANDO_ANTIGUO = !!antiguo;
+  CFG.empresa = antiguo ? { ...empresaVacia(), ...c.empresa } : empresaElegida();
   CFG.valores_fijos_mtd = { ...CFG.valores_fijos_mtd, ...c.valores_fijos_mtd };
   CFG.valores_fijos_cie = { ...CFG.valores_fijos_cie, ...c.valores_fijos_cie };
   if (c.extras) CFG.extras = JSON.parse(JSON.stringify(c.extras));
-  MIRANDO_ANTIGUO = !!antiguo;
   pintarConfigEmpresa();
+  pintarSelectorEmpresa();
   pintarPestanasDoc();
   pintarPanelDoc();
   $("#volver-a-lo-mio").hidden = !antiguo;
@@ -648,6 +656,127 @@ $("#btn-vaciar-expedientes").addEventListener("click", () => {
 
 /* ══════════════ configuración ══════════════ */
 
+/* ══════════════ las empresas instaladoras ══════════════ */
+
+/* Se puede tener más de una: el mismo programa hace boletines de una empresa o
+   de otra. Lo que cambia entre ellas es el bloque entero -razón social, NIF,
+   registro industrial, el instalador y su número de certificado-, así que cada
+   una se guarda completa y se elige cuál firma antes de generar.
+
+   El resto del programa sigue leyendo `CFG.empresa`, que es la elegida en cada
+   momento. Así ni los impresos ni el motor se enteran de que hay varias. */
+
+const nombreEmpresa = e => ((e || {}).razon_social || "").trim() || "Sin nombre";
+
+/* Una empresa recién puesta: todos los huecos que piden los impresos, vacíos.
+   Salen de las etiquetas, que son las que se pintan en la pantalla, para que no
+   haya dos listas de campos que se puedan desparejar. */
+const empresaVacia = () => {
+  const e = {};
+  Object.keys(ETIQUETAS_EMPRESA).forEach(k => { e[k] = ""; });
+  return e;
+};
+
+const nuevoIdEmpresa = () =>
+  "emp-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+const empresaPorId = id => (CFG.empresas || []).find(e => e.id === id) || null;
+
+const empresaElegida = () => empresaPorId(CFG.empresa_activa) || CFG.empresas[0];
+
+/* Monta la lista al arrancar. Antes solo había una empresa, guardada como
+   `empresa` a secas: si es lo que hay, se mete en la lista tal cual y no se
+   pierde nada. */
+function prepararEmpresas(guardado) {
+  const plantilla = empresaVacia();
+  const g = guardado || {};
+  let lista = Array.isArray(g.empresas) ? g.empresas : null;
+  if (!lista || !lista.length) lista = [{ ...plantilla, ...(g.empresa || {}) }];
+  // Cada una con todos sus huecos, por si algún día se añade un campo nuevo, y
+  // con un identificador propio que no cambia aunque se cambie el nombre.
+  CFG.empresas = lista.map(e => ({ ...plantilla, ...e, id: e.id || nuevoIdEmpresa() }));
+  CFG.empresa_activa = empresaPorId(g.empresa_activa) ? g.empresa_activa
+                                                      : CFG.empresas[0].id;
+  CFG.empresa = empresaElegida();
+}
+
+/* Recoge lo que hay escrito en la pestaña abierta. Se llama antes de cambiar de
+   empresa y antes de añadir o borrar, para no perder lo tecleado. */
+function recogerEmpresa() {
+  if (MIRANDO_ANTIGUO) return;
+  const suya = empresaElegida();
+  $$("[data-empresa]").forEach(i => { suya[i.dataset.empresa] = i.value; });
+}
+
+function elegirEmpresa(id) {
+  recogerEmpresa();
+  if (!empresaPorId(id)) return;
+  CFG.empresa_activa = id;
+  CFG.empresa = empresaElegida();
+  guardarAjustes();
+  pintarConfigEmpresa();
+  pintarSelectorEmpresa();
+  avisarFaltaEmpresa();
+}
+
+/* El cartel de "antes de nada, pon los datos de tu empresa". Sale cuando la
+   empresa elegida todavía no tiene ni razón social. */
+const avisarFaltaEmpresa = () => {
+  const cartel = $("#sin-empresa");
+  if (cartel) cartel.hidden = !!(CFG.empresa.razon_social || "").trim();
+};
+
+/* El selector de arriba del formulario. Con una sola empresa no sale: no hay
+   nada que elegir y solo estorbaría. */
+function pintarSelectorEmpresa() {
+  const barra = $("#barra-empresa");
+  const sel = $("#empresa-del-expediente");
+  if (!barra || !sel) return;
+  sel.innerHTML = "";
+  if (MIRANDO_ANTIGUO) {
+    // La del expediente que estás mirando, que puede que ya ni esté en tu
+    // lista. Se enseña, pero desde aquí no se cambia.
+    sel.appendChild(new Option(nombreEmpresa(CFG.empresa), ""));
+    sel.disabled = true;
+    barra.hidden = false;
+    return;
+  }
+  sel.disabled = false;
+  CFG.empresas.forEach(e => {
+    const o = new Option(nombreEmpresa(e), e.id);
+    o.selected = e.id === CFG.empresa_activa;
+    sel.appendChild(o);
+  });
+  barra.hidden = CFG.empresas.length < 2;
+}
+
+function pintarPestanasEmpresa() {
+  const caja = $("#pestanas-empresa");
+  if (!caja) return;
+  caja.innerHTML = "";
+  if (MIRANDO_ANTIGUO) {
+    caja.hidden = false;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "activa";
+    b.disabled = true;
+    b.textContent = nombreEmpresa(CFG.empresa) + " · la del expediente antiguo";
+    caja.appendChild(b);
+    return;
+  }
+  // Con una sola no hay nada que elegir: se ve el bloque y ya está.
+  caja.hidden = CFG.empresas.length < 2;
+  if (caja.hidden) return;
+  CFG.empresas.forEach(e => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = nombreEmpresa(e);
+    b.className = e.id === CFG.empresa_activa ? "activa" : "";
+    b.addEventListener("click", () => elegirEmpresa(e.id));
+    caja.appendChild(b);
+  });
+}
+
 const ETIQUETAS_EMPRESA = {
   razon_social: "Razón social", nif: "NIF de la empresa",
   categoria: "Categoría", num_registro: "Nº registro industrial",
@@ -660,6 +789,7 @@ const ETIQUETAS_EMPRESA = {
 };
 
 function pintarConfigEmpresa() {
+  pintarPestanasEmpresa();
   const caja = $("#bloque-empresa");
   caja.innerHTML = "";
   Object.entries(ETIQUETAS_EMPRESA).forEach(([k, etiqueta]) => {
@@ -685,9 +815,68 @@ $("#btn-volver-a-lo-mio").addEventListener("click", () => {
 });
 
 $("#btn-guardar-config").addEventListener("click", () => {
-  $$("[data-empresa]").forEach(i => { CFG.empresa[i.dataset.empresa] = i.value; });
+  if (MIRANDO_ANTIGUO) {
+    avisar("#aviso-config", "Estás viendo un expediente antiguo: pulsa «Volver a "
+      + "mis datos de ahora» antes de guardar, o pisarías tu empresa.", 8000);
+    return;
+  }
+  recogerEmpresa();
   avisar("#aviso-config", guardarAjustes() === false ? "No se ha podido guardar." : "Guardado.");
-  $("#sin-empresa").hidden = !!(CFG.empresa.razon_social || "").trim();
+  pintarPestanasEmpresa();
+  pintarSelectorEmpresa();
+  avisarFaltaEmpresa();
+});
+
+/* Añadir, duplicar y borrar. Duplicar es lo que más se usa: dos empresas del
+   mismo instalador cambian en cuatro campos y el resto es idéntico. */
+function anadirEmpresa(desde) {
+  recogerEmpresa();
+  const nueva = { ...empresaVacia(), ...(desde || {}), id: nuevoIdEmpresa() };
+  if (desde) nueva.razon_social = (desde.razon_social || "") + " (copia)";
+  CFG.empresas.push(nueva);
+  CFG.empresa_activa = nueva.id;
+  CFG.empresa = nueva;
+  guardarAjustes();
+  pintarConfigEmpresa();
+  pintarSelectorEmpresa();
+  avisarFaltaEmpresa();
+}
+
+$("#btn-anadir-empresa").addEventListener("click", () => {
+  if (MIRANDO_ANTIGUO) return;
+  anadirEmpresa(null);
+  avisar("#aviso-config", "Empresa nueva. Rellena sus datos y guarda.");
+});
+
+$("#btn-duplicar-empresa").addEventListener("click", () => {
+  if (MIRANDO_ANTIGUO) return;
+  anadirEmpresa(empresaElegida());
+  avisar("#aviso-config", "Copiada. Cambia lo que sea distinto y guarda.");
+});
+
+$("#btn-borrar-empresa").addEventListener("click", () => {
+  if (MIRANDO_ANTIGUO) return;
+  if (CFG.empresas.length < 2) {
+    avisar("#aviso-config", "Esta es la única empresa que tienes: no se puede borrar.");
+    return;
+  }
+  const suya = empresaElegida();
+  if (!confirm(`¿Borrar «${nombreEmpresa(suya)}»? Los expedientes ya hechos no `
+             + "se tocan: cada uno guarda con qué empresa se hizo.")) return;
+  CFG.empresas = CFG.empresas.filter(e => e.id !== suya.id);
+  CFG.empresa_activa = CFG.empresas[0].id;
+  CFG.empresa = empresaElegida();
+  guardarAjustes();
+  pintarConfigEmpresa();
+  pintarSelectorEmpresa();
+  avisarFaltaEmpresa();
+  avisar("#aviso-config", "Borrada.");
+});
+
+/* El selector de arriba del formulario cambia la empresa que firma. */
+$("#empresa-del-expediente").addEventListener("change", e => {
+  elegirEmpresa(e.target.value);
+  avisar("#aviso-expediente", `Este expediente lo firma ${nombreEmpresa(CFG.empresa)}.`);
 });
 
 $("#btn-guardar-preset").addEventListener("click", () => {
@@ -762,7 +951,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609161323")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609161335")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1114,8 +1303,9 @@ $("#btn-guardar-doc").addEventListener("click", () => {
 
 $("#btn-exportar").addEventListener("click", () => {
   const copia = {
-    version: 2,
-    empresa: CFG.empresa,
+    version: 3,
+    empresas: CFG.empresas,
+    empresa_activa: CFG.empresa_activa,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
     valores_fijos_mtd: CFG.valores_fijos_mtd,
@@ -1142,7 +1332,11 @@ $("#fichero-importar").addEventListener("change", async e => {
         throw new Error("hay expedientes sin nombre");
       }
     }
-    if (c.empresa) CFG.empresa = { ...CFG.empresa, ...c.empresa };
+    // Las copias de antes traían una sola empresa, sin lista.
+    if (Array.isArray(c.empresas) ? c.empresas.length : c.empresa) {
+      prepararEmpresas({ empresas: c.empresas, empresa_activa: c.empresa_activa,
+                         empresa: c.empresa });
+    }
     if (c.tecnica) CFG.tecnica = { ...CFG.tecnica, ...c.tecnica };
     if (c.valores_fijos_mtd)
       CFG.valores_fijos_mtd = { ...CFG.valores_fijos_mtd, ...c.valores_fijos_mtd };
@@ -1156,7 +1350,7 @@ $("#fichero-importar").addEventListener("change", async e => {
     pintarLocalidades();
     pintarExpedientes(); aplicarValoresTecnicos(CFG.tecnica); recalcular();
     avisar("#aviso-copia", "Copia restaurada.");
-    $("#sin-empresa").hidden = !!(CFG.empresa.razon_social || "").trim();
+    avisarFaltaEmpresa();
   } catch (err) {
     avisar("#aviso-copia", "Ese archivo no vale: " + String(err).slice(0, 60));
   }

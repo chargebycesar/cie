@@ -28,3 +28,6 @@ fuente/CIE.xls
 # otros trabajos (clientes, otra empresa instaladora). No salen de aqui.
 fuente/respaldo-plantillas/
 fuente/*-original*.pdf
+
+# Ajustes del editor, no son del proyecto
+.claude/

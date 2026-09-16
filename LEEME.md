@@ -125,8 +125,24 @@ La aplicación rellena, no decide. Estas tres cosas conviene mirarlas:
 
 ## Configuración
 
-La pestaña **Configuración** guarda los datos de la empresa instaladora y te
-enseña los códigos postales que ha ido aprendiendo.
+La pestaña **Configuración** guarda los datos de la empresa instaladora y lo que
+se pone en cada impreso.
+
+### Varias empresas
+
+Se pueden tener varias y elegir cuál firma cada expediente: una pestaña por cada
+una, arriba del bloque de datos.
+
+- **Añadir otra empresa** abre una en blanco.
+- **Duplicar esta** la copia entera. Es lo que más se usa: dos empresas del mismo
+  instalador se diferencian en tres o cuatro campos.
+- **Borrar esta** quita la que tengas abierta. La última no se puede borrar, y
+  los expedientes ya hechos no se tocan: cada uno guarda con qué empresa se hizo.
+
+Con una sola empresa no aparece nada de esto, que es como estaba antes.
+
+Para elegir con cuál se firma, arriba del formulario sale **Empresa
+instaladora**. Solo aparece si tienes más de una.
 
 Los **valores técnicos por defecto** se guardan desde la pantalla principal:
 ajusta el apartado «Conductor y protecciones» a lo que instalas habitualmente y

@@ -300,6 +300,26 @@ pone del derecho al leerlos. Se enderezan en
 `herramientas/limpiar_plantillas.py`, y de paso el ajuste de la letra toma el
 alto en valor absoluto, que con un alto negativo elegía el tamaño mínimo.
 
+### Varias empresas instaladoras
+
+Se puede tener más de una y elegir cuál firma cada expediente. Lo que cambia de
+una a otra es el bloque entero -razón social, NIF, registro industrial, el
+instalador y su número de certificado-, así que cada una se guarda completa, con
+un identificador propio que no cambia aunque le cambies el nombre.
+
+Lo que **no** cambia es el resto del programa: `CFG.empresa` sigue siendo la
+empresa elegida en cada momento, y los mapas de los impresos y los dos motores
+no se enteran de que hay varias. En Python lo resuelve `_elegir_empresa()` al
+cargar la configuración; en el navegador, `prepararEmpresas()` al arrancar.
+
+Los ajustes de antes, con una sola empresa guardada como `empresa` a secas, se
+meten en la lista tal cual: no hay que hacer nada.
+
+Mirando un expediente antiguo se trabaja sobre una **copia suelta** de su
+empresa, no sobre la de la lista, y Guardar se niega a hacer nada hasta que
+vuelves a tus datos de ahora. Si no, abrir un expediente de marzo y darle a
+guardar te machacaba la empresa con la de entonces.
+
 ### Los expedientes guardan con qué datos se hicieron
 
 Al volver a abrir un expediente de hace meses salía con los datos de empresa de

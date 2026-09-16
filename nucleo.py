@@ -45,7 +45,31 @@ SOFFICE_CANDIDATOS = [
 
 def cargar_config():
     with open(CONFIG, encoding="utf-8") as f:
-        return json.load(f)
+        return _elegir_empresa(json.load(f))
+
+
+def _elegir_empresa(cfg):
+    """Deja en cfg["empresa"] la empresa instaladora con la que se va a firmar.
+
+    Se pueden tener varias -el mismo programa hace boletines de una empresa o de
+    otra-, guardadas en "empresas" con cual esta elegida en "empresa_activa".
+    Aqui se resuelve una sola vez y el resto del motor sigue leyendo
+    cfg["empresa"], que es la de siempre: los mapas de los impresos no se
+    enteran de que hay mas de una.
+
+    Si la configuracion es de las de antes, con una sola empresa, se queda como
+    esta.
+    """
+    lista = cfg.get("empresas")
+    if not isinstance(lista, list) or not lista:
+        return cfg
+    elegida = None
+    for e in lista:
+        if isinstance(e, dict) and e.get("id") == cfg.get("empresa_activa"):
+            elegida = e
+            break
+    cfg["empresa"] = elegida if elegida is not None else lista[0]
+    return cfg
 
 
 def guardar_config(cfg):
