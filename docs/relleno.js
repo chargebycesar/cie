@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202609141345";
+import { mayus } from "./util.js?v=202609161323";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 

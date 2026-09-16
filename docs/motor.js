@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609141345";
-import { rellenarPdf } from "./relleno.js?v=202609141345";
-import { generarCie } from "./cie.js?v=202609141345";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609161323";
+import { rellenarPdf } from "./relleno.js?v=202609161323";
+import { generarCie } from "./cie.js?v=202609161323";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -24,6 +24,15 @@ export function nombreCarpeta(datos) {
   const base = sinAcentos(partes).toUpperCase()
     .replace(/[^A-Z0-9 ]+/g, "").trim().replace(/\s+/g, "_");
   return `${base}_${t(datos.fecha) || new Date().toISOString().slice(0, 10)}`;
+}
+
+/* El nombre del cliente tal como se lee: primero el nombre y luego los dos
+   apellidos. Va así en todo lo que lleva el nombre de una pieza -el esquema,
+   la autorización, el anexo del garaje-. Al revés, "APELLIDOS NOMBRE", solo en
+   el nombre de la carpeta, que así se ordenan por apellido. */
+export function nombreDelTitular(datos) {
+  return [datos.titular_nombre, datos.titular_apellido1, datos.titular_apellido2]
+    .map(t).filter(Boolean).join(" ");
 }
 
 export function direccionUnaLinea(pre, datos) {
@@ -468,8 +477,7 @@ export const PISTAS_ANEXO_GARAJE = {
 
 export function mapaAnexoGaraje(datos, cfg) {
   const { dia, mes, anio } = partesFecha(datos.fecha);
-  const nombre = [datos.titular_nombre, datos.titular_apellido1, datos.titular_apellido2]
-    .map(t).filter(Boolean).join(" ");
+  const nombre = nombreDelTitular(datos);
   return {
     mapa: {
       "nombre titular": nombre,
@@ -502,8 +510,7 @@ export function mapaUnifilar(datos, cfg, tec, calc) {
   const e = cfg.empresa || {};
   const { dia, mes, anio } = partesFecha(datos.fecha);
   const p1 = "topmostSubform[0].Page1[0].";
-  const titular = [datos.titular_apellido1, datos.titular_apellido2, datos.titular_nombre]
-    .map(t).filter(Boolean).join(" ");
+  const titular = nombreDelTitular(datos);
 
   return {
     mapa: {
@@ -534,8 +541,7 @@ export function mapaUnifilar(datos, cfg, tec, calc) {
 
 export function mapaAutorizacion(datos, cfg) {
   const e = cfg.empresa || {};
-  const nombre = [datos.titular_nombre, datos.titular_apellido1, datos.titular_apellido2]
-    .map(t).filter(Boolean).join(" ");
+  const nombre = nombreDelTitular(datos);
   return {
     mapa: {
       Auto_Text1: nombre,

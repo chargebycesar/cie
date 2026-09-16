@@ -167,6 +167,18 @@ def direccion_del_edificio(pre, datos):
     return " ".join(p for p in piezas if p)
 
 
+def nombre_del_titular(datos):
+    """El nombre del cliente tal como se lee: nombre y luego los dos apellidos.
+
+    Va asi en todo lo que lleva el nombre de una pieza: el esquema, la
+    autorizacion y el anexo del garaje. Al reves, "APELLIDOS NOMBRE", solo en el
+    nombre de la carpeta, que asi se ordenan por apellido.
+    """
+    partes = [t(datos.get("titular_nombre")), t(datos.get("titular_apellido1")),
+              t(datos.get("titular_apellido2"))]
+    return " ".join(p for p in partes if p)
+
+
 def direccion_una_linea(pre, datos):
     """Monta 'CALLE MAYOR 2 3 IZQ' a partir de los campos sueltos."""
     piezas = [t(datos.get(pre + "_tipo_via")), t(datos.get(pre + "_nombre_via")),
@@ -971,9 +983,7 @@ PISTAS_ANEXO_GARAJE = {
 def mapa_anexo_garaje(datos, cfg):
     """Declaracion sobre inspeccion periodica del garaje (Acta XII GTREBT)."""
     dia, mes, anio, _ = partes_fecha(datos.get("fecha"))
-    nombre = " ".join(x for x in [t(datos.get("titular_nombre")),
-                                  t(datos.get("titular_apellido1")),
-                                  t(datos.get("titular_apellido2"))] if x)
+    nombre = nombre_del_titular(datos)
     m = {
         "nombre titular": nombre,
         "Texto2": t(datos.get("titular_nif")),
@@ -1007,9 +1017,7 @@ def mapa_unifilar(datos, cfg, preset, calc):
     e = cfg.get("empresa") or {}
     dia, mes, anio, _ = partes_fecha(datos.get("fecha"))
     p1 = "topmostSubform[0].Page1[0]."
-    titular = " ".join(x for x in [t(datos.get("titular_apellido1")),
-                                   t(datos.get("titular_apellido2")),
-                                   t(datos.get("titular_nombre"))] if x)
+    titular = nombre_del_titular(datos)
     m = {
         # la linea que alimenta el punto de recarga
         "DERIVACION INDIVIDUAL": (f"{preset['conductores_unifilar']} x "
@@ -1039,9 +1047,7 @@ def mapa_unifilar(datos, cfg, preset, calc):
 def mapa_autorizacion(datos, cfg):
     """Autorizacion del titular al instalador para gestionar el expediente."""
     e = cfg["empresa"]
-    nombre = " ".join(x for x in [t(datos.get("titular_nombre")),
-                                  t(datos.get("titular_apellido1")),
-                                  t(datos.get("titular_apellido2"))] if x)
+    nombre = nombre_del_titular(datos)
     m = {
         "Auto_Text1": nombre,
         "Auto_Text2": t(datos.get("titular_nif")),
