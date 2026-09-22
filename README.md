@@ -344,6 +344,24 @@ que valen los dos a la vez: la leyenda se ve gris y lo que escribe el cliente
 sale negro, como el resto del documento. Sin JavaScript dentro del PDF, que no
 todos los visores lo ejecutan.
 
+### El texto del CIE no puede salirse de su casilla
+
+Un valor largo se salía del recuadro y se montaba encima del rótulo de al lado:
+«URBANIZACION» pisaba el «Nombre vía:» que tiene detrás. Un CIE con el texto
+fuera de su casilla no vale.
+
+El mapa decía **dónde empieza** cada dato, pero no hasta dónde puede llegar. Eso
+lo apunta ahora `herramientas/anchos_cie.py`, y lo saca del propio impreso en
+blanco: en la línea de cada celda, lo siguiente que hay impreso a la derecha es
+donde se acaba el sitio. Si en esa línea no hay nada, no hay límite —es lo que
+hace la hoja de cálculo cuando las celdas de al lado están vacías, y por eso la
+empresa distribuidora y la información adicional ocupan media hoja.
+
+Cuando el texto no cabe, **se encoge; no se parte**. Partirlo rompería un NIF o
+un CUPS por la mitad, añadiría renglones que se montan con la fila de abajo, y
+—como cada motor mide las letras un poco distinto— dejaría de salir lo mismo en
+el navegador y en Python.
+
 ### El COMPLETADO del CIE, y el recuadro que sí va vacío
 
 Arriba a la derecha del CIE hay un recuadro redondeado con dos cosas dentro que

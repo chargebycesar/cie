@@ -112,12 +112,56 @@ def filas_incompletas(mapa, celdas):
 # Dibujar
 # --------------------------------------------------------------------------
 
+def _sitio_que_hay(sitio):
+    """Cuanto sitio tiene el texto de una celda antes de pisar lo de al lado.
+
+    El ancla no esta en el borde: en las celdas alineadas a la izquierda es
+    donde empieza el texto, y en las centradas es el medio. Devuelve 0 cuando
+    no hay limite -en esa linea no hay nada impreso a la derecha-, que es como
+    la hoja de calculo deja correr la empresa distribuidora media hoja.
+    """
+    izq, der = sitio.get("izq") or 0, sitio.get("der") or 0
+    if not der > izq or der > 1000:
+        return 0
+    alin = sitio.get("alineacion", "izquierda")
+    if alin == "centro":
+        return 2 * min(sitio["x"] - izq, der - sitio["x"])
+    if alin == "derecha":
+        return sitio["x"] - izq
+    return der - sitio["x"]
+
+
+TAM_MINIMO_CIE = 5
+
+
+def _tamano_que_cabe(texto, sitio, fuente, tam):
+    """La letra que hay que usar para que el texto no se salga de su casilla.
+
+    Un valor largo se salia del recuadro y se montaba encima del rotulo de al
+    lado -"URBANIZACION" pisaba el "Nombre via:" que tiene detras-, y un CIE
+    con el texto fuera de su casilla no vale. Se encoge, no se parte: partir
+    un NIF o un CUPS por la mitad seria peor, y la hoja de calculo tampoco
+    cambia el numero de renglones de una celda.
+    """
+    hay = _sitio_que_hay(sitio)
+    if not hay > 0:
+        return tam
+    t = tam
+    while t > TAM_MINIMO_CIE and pymupdf.get_text_length(
+            texto, fontname=fuente, fontsize=t) > hay:
+        t = round(t - 0.25, 2)
+    return t
+
+
 def _escribir(page, sitio, texto, color=(0, 0, 0)):
     if not texto:
         return
-    tam = sitio.get("tam") or 7.41
     fuente = TIPO_LETRA_NEGRITA if sitio.get("negrita") else TIPO_LETRA
     lineas = str(texto).split("\n")
+    # La letra se encoge si hace falta, y lo mismo en todos los renglones de
+    # la celda: de lo contrario saldria cada uno de un tamano.
+    tam = min((_tamano_que_cabe(l, sitio, fuente, sitio.get("tam") or 7.41)
+               for l in lineas), default=sitio.get("tam") or 7.41)
     alto_linea = tam * 1.25
     # Con varias lineas el bloque se reparte arriba y abajo de la linea medida
     inicio = sitio["linea_base"] - alto_linea * (len(lineas) - 1) / 2

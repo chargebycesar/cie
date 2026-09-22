@@ -56,11 +56,48 @@ export function estado(mapa, celdas) {
 
 /* ══════════════ dibujar ══════════════ */
 
+/* Cuánto sitio tiene el texto de una celda antes de pisar lo de al lado.
+
+   El ancla no está en el borde: en las celdas alineadas a la izquierda es
+   donde empieza el texto, y en las centradas es el medio. Devuelve 0 cuando
+   no hay límite -en esa línea no hay nada impreso a la derecha-, que es como
+   la hoja de cálculo deja correr la empresa distribuidora media hoja. */
+function sitioQueHay(sitio) {
+  const izq = sitio.izq ?? 0, der = sitio.der ?? 0;
+  if (!(der > izq) || der > 1000) return 0;
+  if (sitio.alineacion === "centro") return 2 * Math.min(sitio.x - izq, der - sitio.x);
+  if (sitio.alineacion === "derecha") return sitio.x - izq;
+  return der - sitio.x;
+}
+
+/* La letra que hay que usar para que el texto no se salga de su casilla.
+
+   Un valor largo se salía del recuadro y se montaba encima del rótulo de al
+   lado -«URBANIZACION» pisaba el «Nombre vía:» que tiene detrás-, y un CIE
+   con el texto fuera de su casilla no vale. Se encoge, no se parte: partir
+   un NIF o un CUPS por la mitad sería peor, y la hoja de cálculo tampoco
+   cambia el número de renglones de una celda. */
+const TAM_MINIMO_CIE = 5;
+
+function tamanoQueCabe(texto, sitio, fuente, tam) {
+  const hay = sitioQueHay(sitio);
+  if (!(hay > 0)) return tam;
+  let t = tam;
+  while (t > TAM_MINIMO_CIE && fuente.widthOfTextAtSize(texto, t) > hay) {
+    t = Math.round((t - 0.25) * 100) / 100;
+  }
+  return t;
+}
+
 function escribir(page, sitio, texto, fuentes, altoPagina, lib) {
   if (!texto) return;
-  const tam = sitio.tam || 7.41;
   const fuente = sitio.negrita ? fuentes.negrita : fuentes.normal;
   const lineas = String(texto).split("\n");
+  // La letra se encoge si hace falta, y lo mismo en todos los renglones de
+  // la celda: de lo contrario saldría cada uno de un tamaño.
+  const tam = lineas.reduce(
+    (t, l) => Math.min(t, tamanoQueCabe(l, sitio, fuente, sitio.tam || 7.41)),
+    sitio.tam || 7.41);
   const altoLinea = tam * 1.25;
   // Con varias líneas el bloque se reparte arriba y abajo de la línea medida
   const inicio = sitio.linea_base - altoLinea * (lineas.length - 1) / 2;
