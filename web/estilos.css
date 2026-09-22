@@ -1,0 +1,206 @@
+:root{
+  --fondo:#f4f6f9;
+  --tarjeta:#ffffff;
+  --borde:#d8dee7;
+  --texto:#1c2430;
+  --suave:#63708a;
+  --acento:#1553b6;
+  --acento-claro:#e8f0fd;
+  --ok:#0f7a4a;
+  --ok-fondo:#e6f5ee;
+  --aviso:#9a5b00;
+  --aviso-fondo:#fdf3e2;
+  --error:#a51d2d;
+  --error-fondo:#fdeaec;
+  --radio:10px;
+}
+
+*{box-sizing:border-box}
+/* .rejilla lleva display:grid, que gana al display:none del navegador
+   para [hidden]; sin este !important los bloques ocultos se verian. */
+[hidden]{display:none!important}
+body{
+  margin:0;
+  background:var(--fondo);
+  color:var(--texto);
+  font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;
+}
+
+/* ─────────── cabecera ─────────── */
+header{
+  background:#12233d;
+  color:#fff;
+  padding:18px 28px 0;
+  position:sticky;top:0;z-index:20;
+  box-shadow:0 2px 12px rgba(0,0,0,.16);
+}
+.marca{display:flex;align-items:center;gap:14px}
+.logo{font-size:30px;line-height:1}
+header h1{margin:0;font-size:20px;letter-spacing:.2px}
+header p{margin:2px 0 0;font-size:13px;color:#9db2d2}
+
+.pestanas{display:flex;gap:4px;margin-top:16px}
+.pestana{
+  background:transparent;border:0;color:#9db2d2;
+  padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;
+  border-radius:8px 8px 0 0;font-family:inherit;
+}
+.pestana:hover{color:#fff;background:rgba(255,255,255,.07)}
+.pestana.activa{background:var(--fondo);color:var(--acento)}
+
+main{max-width:1120px;margin:0 auto;padding:26px 20px 80px}
+.panel{display:none}
+.panel.activa{display:block}
+
+.alarma{
+  background:var(--error-fondo);border:1px solid #f3c3c9;
+  border-left:5px solid var(--error);border-radius:var(--radio);
+  padding:14px 18px;margin-bottom:18px;color:var(--error);font-size:14px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.alarma strong{font-weight:700}
+.alarma button{
+  margin-left:auto;background:var(--error);color:#fff;border:0;
+  padding:8px 18px;border-radius:7px;cursor:pointer;font:600 14px inherit;
+  font-family:inherit;
+}
+.alarma code{background:#fff;color:var(--error)}
+
+h2{font-size:17px;margin:26px 0 4px}
+.ayuda{color:var(--suave);font-size:13.5px;margin:0 0 14px}
+
+/* ─────────── formulario ─────────── */
+fieldset{
+  background:var(--tarjeta);
+  border:1px solid var(--borde);
+  border-radius:var(--radio);
+  padding:18px 20px 20px;
+  margin:0 0 18px;
+}
+legend{
+  font-weight:700;font-size:14px;color:var(--acento);
+  padding:0 8px;letter-spacing:.3px;
+}
+
+.rejilla{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.rejilla.separa{margin-top:14px}
+.c1{grid-column:span 1}.c2{grid-column:span 2}.c3{grid-column:span 3}
+.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}
+.ancho{grid-column:1/-1}
+
+label{display:block;font-size:12.5px;color:var(--suave);font-weight:600;line-height:1.35}
+label>input,label>select,label>textarea{margin-top:5px}
+input,select,textarea{
+  font:15px inherit;font-family:inherit;
+  padding:9px 10px;border:1px solid var(--borde);border-radius:7px;
+  background:#fff;color:var(--texto);width:100%;
+}
+textarea{resize:vertical;min-height:44px;line-height:1.45}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:-1px;border-color:var(--acento)}
+input[readonly],.calculado{background:#f1f4f8;color:var(--suave)}
+.obl{color:var(--error)}
+
+.casilla{display:flex;flex-direction:row;align-items:flex-start;gap:10px;font-size:14px;color:var(--texto);font-weight:500}
+.casilla>input{width:18px;height:18px;flex:0 0 auto;margin-top:2px}
+.casilla em{color:var(--suave);font-style:normal;font-size:13px;display:block}
+
+.etiqueta-grupo{font-size:12.5px;color:var(--suave);font-weight:600;margin:0 0 8px}
+.separa{margin-top:14px}
+
+/* el código postal que la aplicación recuerda parpadea un momento */
+input.recordado{background:#e6f5ee;border-color:var(--ok);transition:background .3s}
+
+.lista-cps{display:flex;flex-wrap:wrap;gap:8px}
+.lista-cps .cp{
+  background:var(--tarjeta);border:1px solid var(--borde);border-radius:20px;
+  padding:5px 13px;font-size:13px;color:var(--suave);
+}
+.lista-cps .cp b{color:var(--texto);font-weight:600;margin-right:6px}
+
+/* ─────────── botones de preset ─────────── */
+.opciones{display:flex;gap:10px;flex-wrap:wrap}
+.opcion{
+  flex:1 1 200px;text-align:left;cursor:pointer;
+  border:2px solid var(--borde);border-radius:var(--radio);
+  padding:12px 14px;background:#fff;font-family:inherit;font-size:14px;
+  color:var(--texto);
+}
+.opcion:hover{border-color:#a9bcd8}
+.opcion.activa{border-color:var(--acento);background:var(--acento-claro)}
+.opcion strong{display:block;font-size:15px;margin-bottom:2px}
+.opcion span{color:var(--suave);font-size:12.5px}
+
+/* ─────────── caja de cálculo ─────────── */
+.calculo{
+  display:flex;gap:26px;flex-wrap:wrap;align-items:center;
+  margin-top:16px;padding:13px 16px;
+  background:var(--acento-claro);border-radius:var(--radio);
+  border:1px solid #c9dcf8;
+}
+.calculo .k{display:block;font-size:11.5px;color:var(--suave);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.calculo .v{font-size:19px;font-weight:700;color:var(--acento)}
+.calculo .limite{margin-left:auto;font-size:12.5px;color:var(--suave)}
+.calculo.pasado{background:var(--error-fondo);border-color:#f3c3c9}
+.calculo.pasado .v,.calculo.pasado .limite{color:var(--error)}
+
+/* ─────────── avanzado ─────────── */
+.avanzado{
+  background:var(--tarjeta);border:1px solid var(--borde);
+  border-radius:var(--radio);padding:14px 20px;margin-bottom:18px;
+}
+.avanzado summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--acento)}
+.avanzado .rejilla{margin-top:16px}
+
+/* ─────────── acciones ─────────── */
+.barra-accion{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
+button.principal,button.secundario{
+  font:600 15px inherit;font-family:inherit;
+  padding:12px 26px;border-radius:8px;cursor:pointer;border:1px solid transparent;
+}
+button.principal{background:var(--acento);color:#fff}
+button.principal:hover{background:#0f4396}
+button.principal:disabled{background:#8ba6cf;cursor:progress}
+button.secundario{background:#fff;color:var(--texto);border-color:var(--borde)}
+button.secundario:hover{border-color:#a9bcd8}
+.pista{color:var(--suave);font-size:13px}
+code{background:#e7ecf3;padding:1px 5px;border-radius:4px;font-size:12.5px}
+
+/* ─────────── resultado ─────────── */
+.resultado{
+  background:var(--tarjeta);border:1px solid var(--borde);
+  border-left:5px solid var(--ok);
+  border-radius:var(--radio);padding:18px 22px;margin-top:20px;
+}
+.resultado h3{margin:0 0 6px;font-size:16px;color:var(--ok)}
+.resultado.fallo{border-left-color:var(--error)}
+.resultado.fallo h3{color:var(--error)}
+.resultado ul{margin:10px 0 0;padding-left:20px}
+.resultado li{margin:3px 0}
+.resultado .ruta{font-size:13px;color:var(--suave);word-break:break-all;margin:4px 0 0}
+.avisos{margin-top:14px;padding:11px 14px;border-radius:8px;background:var(--aviso-fondo);color:var(--aviso);font-size:13.5px}
+.avisos ul{margin:6px 0 0;padding-left:18px}
+.marca-ok{color:var(--ok);font-weight:700}
+.marca-no{color:var(--error);font-weight:700}
+
+/* ─────────── listas ─────────── */
+.lista{list-style:none;padding:0;margin:0 0 18px}
+.lista li{margin:0 0 8px}
+.lista button{
+  width:100%;text-align:left;background:var(--tarjeta);
+  border:1px solid var(--borde);border-radius:8px;padding:12px 16px;
+  cursor:pointer;font:15px inherit;font-family:inherit;color:var(--texto);
+}
+.lista button:hover{border-color:var(--acento);background:var(--acento-claro)}
+
+.grupo-preset{
+  background:var(--tarjeta);border:1px solid var(--borde);
+  border-radius:var(--radio);padding:16px 20px;margin-bottom:14px;
+}
+.grupo-preset h3{margin:0 0 12px;font-size:15px;color:var(--acento)}
+
+@media(max-width:820px){
+  .rejilla{grid-template-columns:repeat(4,1fr)}
+  .c1,.c2,.c3{grid-column:span 2}
+  .c4,.c5,.c6{grid-column:span 4}
+  main{padding:18px 14px 60px}
+}

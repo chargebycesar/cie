@@ -1,0 +1,33 @@
+# Los expedientes generados con la versión de escritorio no se suben
+salida/
+__pycache__/
+*.pyc
+
+# Perfil y artefactos del empaquetado
+empaquetar/trabajo/
+empaquetar/salida/
+empaquetar/*.zip
+empaquetar/get-pip.py
+
+# Copias de trabajo
+fuente/*.original
+*.tmp
+node_modules/
+
+# Datos personales: no salen de este ordenador.
+# Los .ejemplo.json sí se suben, para que el proyecto se pueda probar.
+config.json
+prueba.json
+
+# El XLS original lleva dentro el NIF del instalador. La aplicación no lo
+# necesita (usa docs/plantillas/CIE_base.pdf); sólo lo usan las herramientas
+# de herramientas/, que se ejecutan una vez si cambia el impreso oficial.
+fuente/CIE.xls
+
+# Los impresos tal como llegaron, antes de limpiarlos: llevan dentro datos de
+# otros trabajos (clientes, otra empresa instaladora). No salen de aqui.
+fuente/respaldo-plantillas/
+fuente/*-original*.pdf
+
+# Ajustes del editor, no son del proyecto
+.claude/
