@@ -34,6 +34,22 @@ carpeta **`/docs`**, y Save. En un par de minutos está en
 Hace falta tener [Git](https://git-scm.com/download/win) instalado. Si no lo
 está, el script te lo dice y te da el enlace.
 
+### Dos cuentas de GitHub
+
+Windows guarda **una sola** contraseña de GitHub y Git la reutiliza para todos
+los repositorios. Con dos cuentas, subir a un repositorio de la segunda falla con
+un 403 aunque el repositorio sea tuyo: entra con la primera.
+
+Se arregla metiendo el usuario en la dirección del repositorio, y así Windows
+guarda una contraseña por cada cuenta:
+
+```bash
+git remote set-url origin https://TU-USUARIO@github.com/TU-USUARIO/TU-REPOSITORIO.git
+```
+
+`publicar.py` reconoce ese error, dice con qué cuenta estás entrando y de quién
+es el repositorio, y se ofrece a cambiarlo él.
+
 ### Si prefieres hacerlo a mano
 
 ```bash

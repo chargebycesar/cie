@@ -280,6 +280,9 @@ def enviar():
         if codigo == 0:
             return True
 
+    if "403" in bajo or "denied to" in bajo or "permission to" in bajo:
+        return _otra_cuenta(salida)
+
     aviso("""
         El envio ha fallado. Lo de arriba dice por que. Lo mas normal es
         que no hayas entrado en tu cuenta de GitHub: vuelve a ejecutar
@@ -288,6 +291,66 @@ def enviar():
         La direccion del repositorio se queda guardada, no te la volvera
         a pedir. Tus cambios estan aqui: no se ha perdido nada.
         """)
+    return False
+
+
+def _otra_cuenta(salida):
+    """GitHub ha dicho 403: la cuenta con la que entras no es la del repositorio.
+
+    Windows guarda UNA sola contrasena de GitHub y Git la reutiliza para todos
+    los repositorios. Con dos cuentas -una para tus cosas y otra para los
+    boletines de otra empresa- la segunda choca con la primera y GitHub contesta
+    que no, aunque el repositorio sea tuyo.
+
+    Se arregla metiendo el usuario dentro de la direccion. Entonces Windows
+    guarda una contrasena para cada cuenta y las dos siguen funcionando, sin
+    borrar nada ni tener que entrar y salir cada vez.
+    """
+    titulo("Esa cuenta no puede subir a ese repositorio")
+
+    entrando = re.search(r"denied to ([^\s.]+)", salida, re.I)
+    _, url = git("remote", "get-url", "origin", callado=True)
+    m = re.search(r"github\.com[/:]([^/@]+)/([^/]+?)(?:\.git)?/?$", url)
+
+    if entrando:
+        print(f"  Estas entrando en GitHub como {entrando.group(1)}.")
+    if m:
+        print(f"  Y el repositorio es de {m.group(1)}.")
+    print()
+    print("  Windows guarda una sola contrasena de GitHub y Git la usa para")
+    print("  todo. Si tienes dos cuentas, la primera le pisa la vez a la otra.")
+
+    if not m:
+        return False
+
+    duenno, repo = m.group(1), m.group(2)
+    nueva = f"https://{duenno}@github.com/{duenno}/{repo}.git"
+    aviso(f"""
+        Poniendo el usuario dentro de la direccion, Windows guarda una
+        contrasena para cada cuenta y las dos te siguen funcionando:
+
+            {nueva}
+
+        Si vas a entrar con otra cuenta distinta que tambien tenga
+        permiso, pon ese nombre en vez de {duenno}.
+        """)
+    if si_o_no("Lo cambio y lo intento otra vez?"):
+        git("remote", "set-url", "origin", nueva)
+        print()
+        print("  Ahora el navegador te va a pedir entrar. Hazlo con la cuenta")
+        print(f"  {duenno}, no con la otra.")
+        print()
+        codigo, _ = git("push", "-u", "origin", "main")
+        if codigo == 0:
+            return True
+        aviso("""
+            Sigue sin dejarte. Si el navegador no te ha llegado a preguntar,
+            es que Windows ha vuelto a dar la contrasena guardada: quitala en
+            Panel de control > Administrador de credenciales > Credenciales de
+            Windows, la que pone git:https://github.com, y vuelve a intentarlo.
+
+            Tus cambios estan aqui: no se ha perdido nada.
+            """)
     return False
 
 

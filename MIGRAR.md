@@ -75,6 +75,55 @@ copia**, y le das el `boletines-irve-copia.json` del paso 1.
 
 ---
 
+## Si GitHub te dice que no tienes permiso
+
+```
+remote: Permission to otra-cuenta/repo.git denied to la-de-siempre.
+fatal: ... The requested URL returned error: 403
+```
+
+Pasa cuando el repositorio nuevo es de **otra cuenta de GitHub**. Windows guarda
+una sola contraseña de GitHub y Git la reutiliza para todos los repositorios, así
+que entra con la cuenta de siempre y GitHub le dice que no.
+
+La solución es meter el usuario dentro de la dirección: entonces Windows guarda
+una contraseña por cada cuenta y las dos te siguen funcionando.
+
+```bash
+git remote set-url origin https://TU-USUARIO@github.com/TU-USUARIO/TU-REPOSITORIO.git
+```
+
+Y vuelves a `publicar.bat`. El navegador te pedirá entrar: hazlo **con la cuenta
+nueva**, no con la de siempre.
+
+`publicar.bat` ya reconoce este error y se ofrece a hacerlo él. Solo hay que
+decirle que sí y entrar con la cuenta que toca.
+
+Si aun así el navegador no llega a preguntarte, es que Windows ha vuelto a dar la
+contraseña guardada. Quítala en **Panel de control › Administrador de
+credenciales › Credenciales de Windows**, la que pone `git:https://github.com`, y
+vuelve a intentarlo.
+
+---
+
+## Si prefieres subirlo a mano, sin Git
+
+Se puede. En el repositorio nuevo, **Add file › Upload files**, y arrastras
+dentro **todo lo que hay en este ZIP** -las carpetas incluidas, el navegador
+respeta la estructura-. Luego **Commit changes**, y sigues desde el paso 5.
+
+Para que la página funcione basta con la carpeta `docs/` entera. El resto
+-`nucleo.py`, `herramientas/`, `publicar.py`, los `.md`- no lo necesita la web:
+es la comprobación de que los dos motores dan lo mismo, la preparación de los
+impresos y la documentación. Sube todo igualmente, que el día que haya que tocar
+algo lo vas a querer ahí.
+
+Ojo con `docs/.nojekyll`: empieza por punto y algunos exploradores lo esconden.
+Si no aparece en la lista de subidos, créalo desde GitHub con **Add file › Create
+new file**, nombre `docs/.nojekyll`, y lo dejas vacío.
+
+---
+
 ## Si prefieres conservar el historial de cambios
 
 Lo de arriba empieza de cero en el repositorio nuevo, que para esto vale. Si
