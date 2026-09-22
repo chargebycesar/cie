@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609221930";
-import { rellenarPdf } from "./relleno.js?v=202609221930";
-import { generarCie } from "./cie.js?v=202609221930";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609221938";
+import { rellenarPdf } from "./relleno.js?v=202609221938";
+import { generarCie } from "./cie.js?v=202609221938";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -556,62 +556,80 @@ export function mapaAutorizacion(datos, cfg) {
   };
 }
 
+/* La solicitud BT-1134F1, con el impreso oficial de abril de 2024.
+
+   El de antes estaba caducado: otra Dirección General, otra Consejería, y el
+   apartado 6 con otros huecos. El oficial no trae campos rellenables -es un PDF
+   plano-, así que la plantilla la arma herramientas/hacer_solicitud.py sacando
+   las casillas de la propia tabla del impreso.
+
+   En el apartado 6 ya no hay bloque, escalera, piso ni puerta: eso va dentro
+   del nombre de la vía entre paréntesis, que es como lo rellenan en Industria. */
 export function mapaSolicitud(datos, cfg) {
   const e = cfg.empresa || {};
   const { dia, mes, anio } = partesFecha(datos.fecha);
+  const dentroDelaVia = [
+    t(datos.empl_bloque) && `Bloque ${t(datos.empl_bloque)}`,
+    t(datos.empl_escalera) && `Esc. ${t(datos.empl_escalera)}`,
+    t(datos.empl_piso) && `Piso ${t(datos.empl_piso)}`,
+    t(datos.empl_puerta) && `Puerta ${t(datos.empl_puerta)}`,
+  ].filter(Boolean).join(", ");
+  const viaEmpl = [t(datos.empl_nombre_via), dentroDelaVia && `(${dentroDelaVia})`]
+    .filter(Boolean).join(" ");
+
   const mapa = {
-    NIF: t(datos.titular_nif),
-    "Primer Apellido": t(datos.titular_apellido1),
-    "Segundo Apellido": t(datos.titular_apellido2),
-    "NombreRazón Social": t(datos.titular_nombre),
-    "Correo electrónico": t(datos.titular_email),
-    "Tipo de vía": t(datos.titular_tipo_via),
-    "Nombre vía": t(datos.titular_nombre_via),
-    N: t(datos.titular_numero),
-    Bloque: t(datos.titular_bloque),
-    Escalera: t(datos.titular_escalera),
-    Piso: t(datos.titular_piso),
-    Puerta: t(datos.titular_puerta),
-    Localidad: t(datos.titular_localidad),
-    Provincia: t(datos.titular_provincia) || "MADRID",
-    CP: t(datos.titular_cp),
-    "Teléfono Móvil": t(datos.titular_movil),
-    NIF_3: e.nif,
-    "NombreRazón Social_2": e.razon_social,
-    Correoe: e.email,
-    Categoría: t(e.categoria).toUpperCase(),
-    "N Registro": e.num_registro,
-    "Nombre del instalador": e.instalador_nombre,
-    "Tipo de vía_3": e.tipo_via,
-    "Nombre vía_3": e.nombre_via,
-    N_3: e.numero,
-    Localidad_3: e.municipio,
-    Provincia_3: e.provincia,
-    CP_3: e.cp,
-    "Teléfono Móvil_3": e.telefono,
-    "Tipo de vía_6": t(datos.empl_tipo_via),
-    "Nombre vía_6": t(datos.empl_nombre_via),
-    N_6: t(datos.empl_numero),
-    CP_6: t(datos.empl_cp),
-    Bloque_6: t(datos.empl_bloque),
-    Escalera_6: t(datos.empl_escalera),
-    Piso_6: t(datos.empl_piso),
-    Puerta_6: t(datos.empl_puerta),
-    Localidad_6: t(datos.empl_localidad),
-    En: e.lugar_firma,
-    Dia: dia,
-    Mes: mes,
-    Año: anio,
-    Otros: "AUTORIZACIÓN",
+    // 1 · titular
+    titular_nif: t(datos.titular_nif),
+    titular_ap1: t(datos.titular_apellido1),
+    titular_ap2: t(datos.titular_apellido2),
+    titular_nombre: t(datos.titular_nombre),
+    titular_email: t(datos.titular_email),
+    titular_tipo_via: t(datos.titular_tipo_via),
+    titular_nombre_via: t(datos.titular_nombre_via),
+    titular_numero: t(datos.titular_numero),
+    titular_bloque: t(datos.titular_bloque),
+    titular_escalera: t(datos.titular_escalera),
+    titular_piso: t(datos.titular_piso),
+    titular_puerta: t(datos.titular_puerta),
+    titular_localidad: t(datos.titular_localidad),
+    titular_provincia: t(datos.titular_provincia) || "MADRID",
+    titular_cp: t(datos.titular_cp),
+    titular_movil: t(datos.titular_movil),
+    titular_fijo: t(datos.titular_fijo),
+    // 3 · empresa instaladora
+    empresa_nif: e.nif,
+    empresa_nombre: e.razon_social,
+    empresa_email: e.email,
+    empresa_categoria: t(e.categoria).toUpperCase(),
+    empresa_registro: e.num_registro,
+    empresa_instalador: e.instalador_nombre,
+    empresa_tipo_via: e.tipo_via,
+    empresa_nombre_via: e.nombre_via,
+    empresa_numero: e.numero,
+    empresa_piso: e.piso,
+    empresa_puerta: e.puerta,
+    empresa_localidad: e.municipio,
+    empresa_provincia: e.provincia,
+    empresa_cp: e.cp,
+    empresa_movil: e.telefono,
+    // 6 · emplazamiento
+    empl_tipo_via: t(datos.empl_tipo_via),
+    empl_nombre_via: viaEmpl,
+    empl_numero: t(datos.empl_numero),
+    empl_cp: t(datos.empl_cp),
+    empl_localidad: t(datos.empl_localidad),
+    // firma
+    lugar_firma: e.lugar_firma,
+    dia, mes, anio,
+    otros: "AUTORIZACIÓN",
   };
-  const nombres = ["Nueva instalación", "Tipo9", "Tipo24", "Tipo25", "Tipo26",
-    "Tipo27", "Tipo28", "Tipo34", "Tipo37", "Tipo38"];
+  // 7 · nueva instalación · 8 · IRVE · 9 · lo que se aporta
   const casillas = {};
-  nombres.forEach(n => { casillas[n] = true; });
+  ["marca_expediente_1", "marca_tipo_10", "marca_doc_1", "marca_doc_2",
+   "marca_doc_3", "marca_doc_4", "marca_doc_5", "marca_doc_11", "marca_doc_15",
+  ].forEach(n => { casillas[n] = true; });
   return { mapa, casillas };
 }
-
-/* ══════════════ celdas del CIE ══════════════ */
 
 export function celdasCie(datos, cfg, tec, calc) {
   const e = cfg.empresa || {};

@@ -278,6 +278,40 @@ de Registro», «Comunidad de Madrid») traen el dibujo sin declarar `/Type
 /XObject /Subtype /Form`. Como campos se ven igual, pero al aplanar
 desaparecían. Se completa en `herramientas/limpiar_plantillas.py`.
 
+### La solicitud, sobre el impreso oficial
+
+El impreso que publica la Comunidad de Madrid es **plano**: no trae ni un campo
+donde escribir. El que se usaba antes se los había puesto alguien por su cuenta
+y se quedó caducado. Cambia más que una casilla:
+
+| | El caducado | El de abril de 2024 |
+|---|---|---|
+| Dirección General | Descarbonización y Transición Energética | **Transición Energética y Economía Circular** |
+| Consejería | Medio Ambiente, Vivienda y Agricultura | **Medio Ambiente, Agricultura e Interior** |
+| Apartado 3 | «…en baja tensión» | «…**autorizada para la tramitación del expediente**» |
+| Apartado 8 | — | opción nueva: **Industrial. CNAE** |
+| Unidad | SGIE | **EXIN** |
+| Apartado 6 | vía, nº, CP, bloque, escalera, piso, puerta, localidad | **vía, nº · CP, localidad** |
+
+`herramientas/hacer_solicitud.py` coge el oficial y le pone los campos encima.
+Las casillas **salen de la propia tabla del impreso**: en cada fila, lo que hay
+detrás de un rótulo y hasta el siguiente rótulo es el hueco de ese dato. Así no
+hay coordenadas escritas a mano que se queden viejas en cuanto Industria mueva
+una línea. Los cuadraditos de marcar se buscan por su carácter (una Wingdings
+metida como texto) y se numeran por dónde caen —`marca_expediente_1`,
+`marca_tipo_10`, `marca_doc_1`—, **no por su rótulo**: un rótulo se reescribe de
+un año para otro y entonces el motor dejaría de encontrar su casilla.
+
+Los huecos van con la letra en automático. Con un tamaño fijo, un nombre largo
+—«SAN SEBASTIAN DE LOS REYES»— se corta en el borde del hueco.
+
+En el apartado 6 ya no hay bloque, escalera, piso ni puerta: eso va dentro del
+nombre de la vía entre paréntesis, que es como lo rellenan en Industria.
+
+```bash
+npm run solicitud
+```
+
 ### De dónde salen los impresos
 
 El MTD es el oficial, descargado tal cual de la sede de la Comunidad de Madrid:
@@ -285,6 +319,8 @@ El MTD es el oficial, descargado tal cual de la sede de la Comunidad de Madrid:
 - [Tramitación de instalaciones eléctricas](https://sede.comunidad.madrid/autorizaciones-licencias-permisos-carnes/tramitacion-instalaciones-electricas/presencial)
 - [Modelo de Memoria Técnica de Diseño](https://gestiona7.madrid.org/i012_impresos/run/j/VerImpreso.icm?CDIMPRESO=IMPRE2722)
 - [Modelo de certificado de instalación (el XLS del CIE)](https://gestiona7.madrid.org/i012_impresos/run/j/VerImpreso.icm?CDIMPRESO=1134FO1)
+- [Solicitud de inscripción BT-1134F1](https://sede.comunidad.madrid/sites/default/files/ADEL/ckeditor/solicitud_bt_generica_dgteyec_15042024.pdf)
+  — guardada en `fuente/SOLICITUD-oficial-15042024.pdf`
 
 Si Industria cambia un impreso, se descarga de ahí, se pasa por
 `herramientas/limpiar_plantillas.py` y se comprueba con

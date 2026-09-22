@@ -1088,72 +1088,80 @@ def mapa_autorizacion(datos, cfg):
 
 
 def mapa_solicitud(datos, cfg):
-    """Solicitud de inscripcion BT-1134F1."""
+    """Solicitud de inscripcion BT-1134F1, impreso oficial de abril de 2024.
+
+    El de antes estaba caducado: otra Direccion General, otra Consejeria, y el
+    apartado 6 con otros huecos. El oficial no trae campos rellenables -es un PDF
+    plano-, asi que la plantilla la arma herramientas/hacer_solicitud.py sacando
+    las casillas de la propia tabla del impreso.
+
+    En el apartado 6 ya no hay bloque, escalera, piso ni puerta: eso va dentro
+    del nombre de la via entre parentesis, que es como lo rellenan en Industria.
+    """
     e = cfg["empresa"]
     dia, mes, anio, _ = partes_fecha(datos.get("fecha"))
+    dentro = [x for x in (
+        f"Bloque {t(datos.get('empl_bloque'))}" if t(datos.get("empl_bloque")) else "",
+        f"Esc. {t(datos.get('empl_escalera'))}" if t(datos.get("empl_escalera")) else "",
+        f"Piso {t(datos.get('empl_piso'))}" if t(datos.get("empl_piso")) else "",
+        f"Puerta {t(datos.get('empl_puerta'))}" if t(datos.get("empl_puerta")) else "",
+    ) if x]
+    via_empl = " ".join(x for x in [t(datos.get("empl_nombre_via")),
+                                    f"({', '.join(dentro)})" if dentro else ""] if x)
     m = {
-        # 1. titular
-        "NIF": t(datos.get("titular_nif")),
-        "Primer Apellido": t(datos.get("titular_apellido1")),
-        "Segundo Apellido": t(datos.get("titular_apellido2")),
-        "NombreRazón Social": t(datos.get("titular_nombre")),
-        "Correo electrónico": t(datos.get("titular_email")),
-        "Tipo de vía": t(datos.get("titular_tipo_via")),
-        "Nombre vía": t(datos.get("titular_nombre_via")),
-        "N": t(datos.get("titular_numero")),
-        "Bloque": t(datos.get("titular_bloque")),
-        "Escalera": t(datos.get("titular_escalera")),
-        "Piso": t(datos.get("titular_piso")),
-        "Puerta": t(datos.get("titular_puerta")),
-        "Localidad": t(datos.get("titular_localidad")),
-        "Provincia": t(datos.get("titular_provincia")) or "MADRID",
-        "CP": t(datos.get("titular_cp")),
-        "Teléfono Móvil": t(datos.get("titular_movil")),
-
-        # 3. empresa instaladora
-        "NIF_3": e["nif"],
-        "NombreRazón Social_2": e["razon_social"],
-        "Correoe": e["email"],
-        "Categoría": e["categoria"].upper(),
-        "N Registro": e["num_registro"],
-        "Nombre del instalador": e["instalador_nombre"],
-        "Tipo de vía_3": e["tipo_via"],
-        "Nombre vía_3": e["nombre_via"],
-        "N_3": e["numero"],
-        "Localidad_3": e["municipio"],
-        "Provincia_3": e["provincia"],
-        "CP_3": e["cp"],
-        "Teléfono Móvil_3": e["telefono"],
-
-        # 6. emplazamiento
-        "Tipo de vía_6": t(datos.get("empl_tipo_via")),
-        "Nombre vía_6": t(datos.get("empl_nombre_via")),
-        "N_6": t(datos.get("empl_numero")),
-        "CP_6": t(datos.get("empl_cp")),
-        "Bloque_6": t(datos.get("empl_bloque")),
-        "Escalera_6": t(datos.get("empl_escalera")),
-        "Piso_6": t(datos.get("empl_piso")),
-        "Puerta_6": t(datos.get("empl_puerta")),
-        "Localidad_6": t(datos.get("empl_localidad")),
-
+        # 1 - titular
+        "titular_nif": t(datos.get("titular_nif")),
+        "titular_ap1": t(datos.get("titular_apellido1")),
+        "titular_ap2": t(datos.get("titular_apellido2")),
+        "titular_nombre": t(datos.get("titular_nombre")),
+        "titular_email": t(datos.get("titular_email")),
+        "titular_tipo_via": t(datos.get("titular_tipo_via")),
+        "titular_nombre_via": t(datos.get("titular_nombre_via")),
+        "titular_numero": t(datos.get("titular_numero")),
+        "titular_bloque": t(datos.get("titular_bloque")),
+        "titular_escalera": t(datos.get("titular_escalera")),
+        "titular_piso": t(datos.get("titular_piso")),
+        "titular_puerta": t(datos.get("titular_puerta")),
+        "titular_localidad": t(datos.get("titular_localidad")),
+        "titular_provincia": t(datos.get("titular_provincia")) or "MADRID",
+        "titular_cp": t(datos.get("titular_cp")),
+        "titular_movil": t(datos.get("titular_movil")),
+        "titular_fijo": t(datos.get("titular_fijo")),
+        # 3 - empresa instaladora
+        "empresa_nif": e["nif"],
+        "empresa_nombre": e["razon_social"],
+        "empresa_email": e["email"],
+        "empresa_categoria": t(e["categoria"]).upper(),
+        "empresa_registro": e["num_registro"],
+        "empresa_instalador": e["instalador_nombre"],
+        "empresa_tipo_via": e["tipo_via"],
+        "empresa_nombre_via": e["nombre_via"],
+        "empresa_numero": e["numero"],
+        "empresa_piso": e.get("piso", ""),
+        "empresa_puerta": e.get("puerta", ""),
+        "empresa_localidad": e["municipio"],
+        "empresa_provincia": e["provincia"],
+        "empresa_cp": e["cp"],
+        "empresa_movil": e["telefono"],
+        # 6 - emplazamiento
+        "empl_tipo_via": t(datos.get("empl_tipo_via")),
+        "empl_nombre_via": via_empl,
+        "empl_numero": t(datos.get("empl_numero")),
+        "empl_cp": t(datos.get("empl_cp")),
+        "empl_localidad": t(datos.get("empl_localidad")),
         # firma
-        "En": e["lugar_firma"],
-        "Dia": dia,
-        "Mes": mes,
-        "Año": anio,
-        "Otros": "AUTORIZACIÓN",
+        "lugar_firma": e["lugar_firma"],
+        "dia": dia,
+        "mes": mes,
+        "anio": anio,
+        "otros": "AUTORIZACIÓN",
     }
-    # Casillas: nueva instalacion, tipo de instalacion IRVE y documentacion
-    # aportada (tasa, tarifa EICI, MTD, CIE, dossier, contrato, autorizacion).
-    nombres = ["Nueva instalación", "Tipo9",
-               "Tipo24", "Tipo25", "Tipo26", "Tipo27", "Tipo28",
-               "Tipo34", "Tipo37", "Tipo38"]
-    return m, {n: True for n in nombres}
-
-
-# --------------------------------------------------------------------------
-# CIE.xls -> celdas
-# --------------------------------------------------------------------------
+    # 7 - nueva instalacion - 8 - IRVE - 9 - lo que se aporta
+    casillas = {n: True for n in (
+        "marca_expediente_1", "marca_tipo_10", "marca_doc_1", "marca_doc_2",
+        "marca_doc_3", "marca_doc_4", "marca_doc_5", "marca_doc_11",
+        "marca_doc_15")}
+    return m, casillas
 
 def celdas_cie(datos, cfg, preset, calc):
     """Celdas de entrada de la hoja CIE del libro oficial de la EICI."""

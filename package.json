@@ -7,7 +7,8 @@
   "scripts": {
     "comprobar": "node herramientas/limites.mjs",
     "comparar": "python herramientas/comparar.py",
-    "formato": "python herramientas/formato_cie.py"
+    "formato": "python herramientas/formato_cie.py",
+    "solicitud": "python herramientas/hacer_solicitud.py"
   },
   "devDependencies": {
     "pdf-lib": "^1.17.1"
