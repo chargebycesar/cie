@@ -281,15 +281,15 @@
   "tierra_electrodos": "1",
   "tierra_linea_enlace": "N/A",
   "num_suministros_monofasicos": "1",
-  "emplazamiento_planta_baja": "X",
-  "ubicacion_centralizacion_modular": "X",
   "presupuesto_materiales": "5",
   "presupuesto_mano_obra": "5",
   "presupuesto_total": "10",
   "adjunta_esquema_unifilar": true,
   "adjunta_planos_planta": false,
   "adjunta_croquis_trazado": false,
-  "adjunta_otros": false
+  "adjunta_otros": false,
+  "emplazamiento": "Planta Baja",
+  "ubicacion": "Centralización Modular"
  },
  "valores_fijos_cie": {
   "actuacion": "Nueva",
@@ -310,5 +310,40 @@
   "resistencia_tierra": "10",
   "resistencia_aislamiento": ">0,5",
   "otras_verificaciones": "N/A"
+ },
+ "opciones_excluyentes": {
+  "MTD.pdf": {
+   "tierra_tipo": {
+    "etiqueta": "Puesta a tierra · tipo",
+    "marca": "X",
+    "opciones": {
+     "Picas": "Texto41",
+     "Placas": "Texto42",
+     "Mallas": "Texto43"
+    }
+   },
+   "emplazamiento": {
+    "etiqueta": "Emplazamiento",
+    "marca": "X",
+    "opciones": {
+     "Planta Baja": "Texto259",
+     "Entresuelo": "Texto260",
+     "1º Sótano": "Texto261",
+     "Cada 6 Plantas": "Texto262",
+     "En Cada Planta": "Texto263"
+    }
+   },
+   "ubicacion": {
+    "etiqueta": "Ubicación",
+    "marca": "X",
+    "opciones": {
+     "Centralización Modular": "Texto268",
+     "Centralización Panel": "Texto269",
+     "Módulo Interior": "Texto270",
+     "CPM-Armario Fachada": "Texto271",
+     "Otros": "Texto272"
+    }
+   }
+  }
  }
 }

@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609221231";
-import { rellenarPdf } from "./relleno.js?v=202609221231";
-import { generarCie } from "./cie.js?v=202609221231";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202609221306";
+import { rellenarPdf } from "./relleno.js?v=202609221306";
+import { generarCie } from "./cie.js?v=202609221306";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -298,14 +298,14 @@ export function mapaMtd(datos, cfg, tec, calc) {
     // Datos tecnicos del punto de medida. Venian puestos en la plantilla,
     // heredados de otro trabajo; ahora salen porque se han configurado.
     Texto252: f.num_suministros_monofasicos,
-    Texto259: f.emplazamiento_planta_baja,
-    Texto268: f.ubicacion_centralizacion_modular,
+    // El emplazamiento, la ubicación y el tipo de puesta a tierra son
+    // opciones excluyentes: las pone aplicarOpciones(), que ademas vacía las
+    // demás de su fila. Si se escribieran aquí, marcar otra dejaría dos.
     Texto36: f.modulo_tipo,
     Texto37: f.modulo_situacion,
     Texto38: tec.iga_texto,
     Texto39: tec.dif_intensidad,
     Texto40: tec.dif_sensibilidad,
-    Texto41: "X",
     Texto44: f.tierra_electrodos,
     Texto46: f.tierra_linea_enlace,
     Texto47: tec.conductor_proteccion,
@@ -661,15 +661,60 @@ export function celdasCie(datos, cfg, tec, calc) {
   };
 }
 
+/* Opciones excluyentes: filas del impreso donde solo puede ir marcada una.
+   «Puesta a tierra: Picas / Placas / Mallas» es una; «Emplazamiento: Planta
+   Baja / Entresuelo / 1º Sótano / Cada 6 Plantas / En Cada Planta», otra.
+
+   Marcar una **vacía las demás de su grupo**, siempre. Antes la X de Picas
+   estaba escrita a pelo en el mapa y elegir Mallas dejaba las dos marcadas: el
+   documento salía mal y no había forma de verlo hasta abrirlo.
+
+   Los grupos se declaran en la configuración, no aquí: así se puede añadir uno
+   nuevo sin tocar el programa. */
+export function aplicarOpciones(partes, cfg, archivo) {
+  const grupos = (cfg.opciones_excluyentes || {})[archivo];
+  if (!grupos) return partes;
+  const fijos = cfg[archivo === "MTD.pdf" ? "valores_fijos_mtd" : "valores_fijos_cie"] || {};
+  for (const [clave, g] of Object.entries(grupos)) {
+    const elegida = t(fijos[clave]);
+    for (const [nombre, campo] of Object.entries(g.opciones || {})) {
+      partes.mapa[campo] = nombre === elegida ? (g.marca || "X") : "";
+    }
+  }
+  return partes;
+}
+
+/* Cuál de las opciones de un grupo ocupa este hueco, si es que ocupa alguno.
+   Lo usan los extras -para no dejar dos marcadas- y la pantalla, para enseñar
+   la fila entera en vez del hueco suelto. */
+export function grupoDelCampo(cfg, archivo, campo) {
+  const grupos = (cfg.opciones_excluyentes || {})[archivo] || {};
+  for (const [clave, g] of Object.entries(grupos)) {
+    for (const [nombre, suyo] of Object.entries(g.opciones || {})) {
+      if (suyo === campo) return { clave, grupo: g, nombre };
+    }
+  }
+  return null;
+}
+
 /* Ajustes por documento: campos que el usuario ha elegido rellenar desde la
    pantalla de Configuración, sin tocar el código. Van encima de lo que pone la
    aplicación, porque si alguien los escribe ahí a mano es que los quiere así.
    Un valor de sí/no es una casilla; cualquier otra cosa, texto. */
-export function aplicarExtras(partes, extras) {
+export function aplicarExtras(partes, extras, cfg = {}, archivo = "") {
   if (!extras) return partes;
   for (const [campo, valor] of Object.entries(extras)) {
-    if (valor === true || valor === false) partes.casillas[campo] = valor;
-    else if (t(valor) !== "") partes.mapa[campo] = t(valor);
+    if (valor === true || valor === false) { partes.casillas[campo] = valor; continue; }
+    if (t(valor) === "") continue;
+    partes.mapa[campo] = t(valor);
+    // Si el hueco es una de las opciones de una fila, las demás se vacían:
+    // marcar a mano una segunda no puede dejar el documento con dos.
+    const g = grupoDelCampo(cfg, archivo, campo);
+    if (g) {
+      for (const otro of Object.values(g.grupo.opciones || {})) {
+        if (otro !== campo) partes.mapa[otro] = "";
+      }
+    }
   }
   return partes;
 }
@@ -749,7 +794,8 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opcion
       else if (doc.tipo === "autorizacion") partes = mapaAutorizacion(datos, cfg);
       else partes = mapaAnexoGaraje(datos, cfg);
 
-      aplicarExtras(partes, (cfg.extras || {})[doc.archivo]);
+      aplicarOpciones(partes, cfg, doc.archivo);
+      aplicarExtras(partes, (cfg.extras || {})[doc.archivo], cfg, doc.archivo);
 
       const r = await rellenarPdf(
         await cargarPlantilla(doc.archivo),

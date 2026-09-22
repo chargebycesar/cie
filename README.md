@@ -162,33 +162,62 @@ formulario, y las mismas 751 palabras en el CIE. La comprobación se repite con:
 python herramientas/comparar.py
 ```
 
-### Lo que pone en cada documento se elige desde la pantalla
+### Lo que pone en cada documento se elige sobre el propio documento
 
-En **Configuración** hay una pestaña por impreso. Cada una trae dos cosas:
+En **Configuración**, una pestaña por impreso, y dentro **la hoja tal como va a
+salir**. Cada hueco enseña lo que va a decir y de dónde sale:
 
-- **Lo que la aplicación pone siempre**, ya relleno con lo de un punto de
-  recarga corriente: tipo de acometida, módulo, puesta a tierra, presupuesto,
-  qué documentación se adjunta... Se cambia ahí y se queda para los siguientes.
-- **Cualquier otro hueco del impreso.** Debajo aparece **la hoja tal cual**,
-  con cada hueco rellenable dibujado encima. Se pincha el que sea, se escribe
-  lo que debe poner (o se marca la casilla) y se guarda al momento. En verde,
-  lo que has puesto tú; en azul, lo que la aplicación rellena sola con los
-  datos del expediente (se puede escribir encima, pero avisa). Hay buscador
-  —por lo que pone al lado o por el nombre del campo— que resalta los huecos
-  que encajan y te lleva al primero, y zoom al 150 y 200 % para los impresos
-  de letra pequeña. El CIE, que no es un formulario sino una hoja de cálculo,
-  sigue por celdas (A28, B43...).
+| Color | Quién lo pone |
+|---|---|
+| Azul | El expediente de cada cliente |
+| Ámbar | Lo que tienes puesto por defecto |
+| Verde | Lo que has cambiado tú |
+| Punteado | Vacío: pincha y escribe |
 
-Así, cuando un expediente pida algo que la aplicación no rellena, **no hay que
-tocar el programa**.
+Se pincha cualquiera y se cambia ahí mismo, con un solo botón: **Guardar como
+predeterminado**. Hay buscador -que encuentra por lo que pone al lado, por el
+nombre del campo, por el nombre del ajuste o por lo que va a salir escrito- y
+zoom al 150 y 200 % para los impresos de letra pequeña. El CIE, que no es un
+formulario sino una hoja de cálculo, sigue por celdas (A28, B43...).
 
-Los huecos y las imágenes salen de `herramientas/indice_campos.py`, que
-recorre cada impreso, dibuja cada página a imagen y apunta de cada campo dónde
-está y qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena
-la aplicación. Antes esto era una lista de nombres (`Texto354`,
-`CampoTexto26[0]`), que en el MTD, con 1.631 campos y los rótulos dibujados en
-vez de escritos, no había quien reconociera; sobre la hoja se ve dónde está
-cada uno. Hay que volver a ejecutarlo si Industria cambia un impreso.
+Antes esto estaba **en tres sitios**: una rejilla de valores con nombre, una
+lista de campos sueltos y la hoja. Ninguno de los tres enseñaba el resultado, y
+los tres se pisaban entre sí.
+
+#### Filas donde solo puede ir marcada una
+
+«Puesta a tierra: Picas / Placas / Mallas» es una fila de esas. Emplazamiento
+-Planta Baja, Entresuelo, 1º Sótano, Cada 6 Plantas, En Cada Planta- es otra, y
+Ubicación otra más.
+
+En el impreso son huecos de texto sueltos donde se escribe una X, así que nada
+impedía que salieran dos marcadas: la X de Picas estaba escrita a pelo en el
+mapa, y si además añadías una X en Mallas, **el documento salía con las dos** y
+no había forma de verlo hasta abrir el PDF.
+
+Ahora la fila es una sola cosa. Al elegir una opción, el motor escribe la marca
+en la suya y **vacía las demás del grupo**, siempre: tanto si la eliges en la
+pantalla como si escribes una X a mano en otra casilla de la fila. Los grupos se
+declaran en la configuración (`opciones_excluyentes`), no en el código, así que
+se puede añadir uno nuevo sin tocar el programa.
+
+Los nombres de las opciones están mirados uno a uno contra el impreso: en el MTD
+los rótulos son dibujo, no texto, y no se pueden sacar solos.
+
+#### Cómo sabe la pantalla a qué hueco va cada ajuste
+
+No lleva una lista a mano -se quedaría vieja en cuanto alguien tocara el mapa
+del impreso-. Le pregunta al motor: pone una marca imposible en cada valor, arma
+el documento y mira en qué hueco ha salido. Con las casillas no vale una marca,
+así que las apaga y mira cuál cambia.
+
+Por eso «Presupuesto, materiales» se cambia en un sitio y sale en los dos huecos
+que lo llevan, sin que nadie tenga que acordarse de que son dos.
+
+Los huecos y las imágenes salen de `herramientas/indice_campos.py`, que recorre
+cada impreso, dibuja cada página a imagen y apunta de cada campo dónde está y
+qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena la
+aplicación. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
 ### El esquema unifilar
 

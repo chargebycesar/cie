@@ -144,6 +144,23 @@ Con una sola empresa no aparece nada de esto, que es como estaba antes.
 Para elegir con cuál se firma, arriba del formulario sale **Empresa
 instaladora**. Solo aparece si tienes más de una.
 
+### Lo que se pone en cada documento
+
+Una pestaña por impreso, y dentro la hoja tal como va a salir. Cada hueco enseña
+lo que va a decir:
+
+- **azul**, lo que pone el expediente de cada cliente;
+- **ámbar**, lo que tienes puesto por defecto;
+- **verde**, lo que has cambiado tú;
+- **punteado**, vacío.
+
+Pinchas cualquiera, lo cambias y le das a **Guardar como predeterminado**. Sale
+así en todos los expedientes hasta que lo vuelvas a cambiar.
+
+Las filas donde solo puede ir marcada una -puesta a tierra, emplazamiento,
+ubicación- salen enteras, y al elegir una las demás se quedan vacías solas. Ya
+no se puede sacar un documento con dos marcadas.
+
 Los **valores técnicos por defecto** se guardan desde la pantalla principal:
 ajusta el apartado «Conductor y protecciones» a lo que instalas habitualmente y
 pulsa **Guardar estos valores como predeterminados**. Se tocan en un solo sitio

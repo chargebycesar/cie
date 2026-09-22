@@ -747,14 +747,15 @@ def mapa_mtd(datos, cfg, preset, calc):
         # plantilla, heredados de otro trabajo; ahora salen porque se
         # han configurado.
         "Texto252": fijos.get("num_suministros_monofasicos", ""),
-        "Texto259": fijos.get("emplazamiento_planta_baja", ""),
-        "Texto268": fijos.get("ubicacion_centralizacion_modular", ""),
+        # El emplazamiento, la ubicacion y el tipo de puesta a tierra son
+        # opciones excluyentes: las pone aplicar_opciones(), que ademas vacia
+        # las demas de su fila. Si se escribieran aqui, marcar otra dejaria
+        # dos marcadas.
         "Texto36": fijos["modulo_tipo"],
         "Texto37": fijos["modulo_situacion"],
         "Texto38": preset["iga_texto"],
         "Texto39": preset["dif_intensidad"],
         "Texto40": preset["dif_sensibilidad"],
-        "Texto41": "X",
         "Texto44": fijos["tierra_electrodos"],
         "Texto46": fijos["tierra_linea_enlace"],
         "Texto47": preset["conductor_proteccion"],
@@ -1373,7 +1374,43 @@ DOCUMENTOS = [
 ]
 
 
-def aplicar_extras(mapa, casillas, extras):
+def aplicar_opciones(mapa, cfg, archivo):
+    """Opciones excluyentes: filas del impreso donde solo puede ir marcada una.
+
+    "Puesta a tierra: Picas / Placas / Mallas" es una; "Emplazamiento: Planta
+    Baja / Entresuelo / 1o Sotano / Cada 6 Plantas / En Cada Planta", otra.
+
+    Marcar una **vacia las demas de su grupo**, siempre. Antes la X de Picas
+    estaba escrita a pelo en el mapa y elegir Mallas dejaba las dos marcadas: el
+    documento salia mal y no habia forma de verlo hasta abrirlo.
+
+    Los grupos se declaran en la configuracion, no aqui: asi se puede anadir uno
+    nuevo sin tocar el programa.
+    """
+    grupos = (cfg.get("opciones_excluyentes") or {}).get(archivo)
+    if not grupos:
+        return mapa
+    mapa = dict(mapa)
+    bloque = "valores_fijos_mtd" if archivo == "MTD.pdf" else "valores_fijos_cie"
+    fijos = cfg.get(bloque) or {}
+    for clave, g in grupos.items():
+        elegida = t(fijos.get(clave))
+        for nombre, campo in (g.get("opciones") or {}).items():
+            mapa[campo] = g.get("marca", "X") if nombre == elegida else ""
+    return mapa
+
+
+def grupo_del_campo(cfg, archivo, campo):
+    """Cual de las opciones de un grupo ocupa este hueco, si ocupa alguno."""
+    grupos = (cfg.get("opciones_excluyentes") or {}).get(archivo) or {}
+    for clave, g in grupos.items():
+        for nombre, suyo in (g.get("opciones") or {}).items():
+            if suyo == campo:
+                return clave, g, nombre
+    return None
+
+
+def aplicar_extras(mapa, casillas, extras, cfg=None, archivo=""):
     """Ajustes por documento elegidos desde la pantalla de Configuracion.
 
     Van encima de lo que pone la aplicacion, porque si alguien los escribe ahi
@@ -1386,8 +1423,17 @@ def aplicar_extras(mapa, casillas, extras):
     for campo, valor in extras.items():
         if isinstance(valor, bool):
             casillas[campo] = valor
-        elif t(valor) != "":
-            mapa[campo] = t(valor)
+            continue
+        if t(valor) == "":
+            continue
+        mapa[campo] = t(valor)
+        # Si el hueco es una de las opciones de una fila, las demas se vacian:
+        # marcar a mano una segunda no puede dejar el documento con dos.
+        g = grupo_del_campo(cfg or {}, archivo, campo)
+        if g:
+            for otro in (g[1].get("opciones") or {}).values():
+                if otro != campo:
+                    mapa[otro] = ""
     return mapa, casillas
 
 
@@ -1473,8 +1519,10 @@ def generar(datos, aplanar_mtd=True):
             mapa, casillas = mapa_autorizacion(datos, cfg)
         else:
             mapa, casillas = mapa_anexo_garaje(datos, cfg)
+        mapa = aplicar_opciones(mapa, cfg, plantilla)
         mapa, casillas = aplicar_extras(mapa, casillas,
-                                        (cfg.get("extras") or {}).get(plantilla))
+                                        (cfg.get("extras") or {}).get(plantilla),
+                                        cfg, plantilla)
         pistas = PISTAS_ANEXO_GARAJE if tipo == "anexo_garaje" else None
         try:
             escritos, faltan = rellenar_pdf(origen, mapa, destino, casillas,

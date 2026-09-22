@@ -309,6 +309,7 @@ button.enlace:hover{color:#0f4396}
 }
 .leyenda-huecos .l-mio::before{background:var(--ok-fondo);border:1.5px solid var(--ok)}
 .leyenda-huecos .l-app::before{background:rgba(21,83,182,.16);border:1px solid var(--acento)}
+.leyenda-huecos .l-fijo::before{background:var(--aviso-fondo);border:1.5px solid var(--aviso)}
 .paginas-impreso{overflow:auto;max-height:78vh;border:1px solid var(--borde);border-radius:var(--radio);background:var(--fondo);padding:10px}
 .pagina-impreso{
   position:relative;margin:0 auto 14px;background:#fff;
@@ -329,7 +330,10 @@ button.enlace:hover{color:#0f4396}
 .hueco:hover{background:rgba(21,83,182,.18);border-style:solid;z-index:1}
 .hueco.mio{background:var(--ok-fondo);border:1.5px solid var(--ok);font-weight:600}
 .hueco.app{background:rgba(21,83,182,.16);border:1px solid var(--acento)}
-.hueco.app.mio{background:var(--aviso-fondo);border:1.5px solid var(--aviso);color:var(--aviso)}
+/* Lo predeterminado: lo que sale igual en todos los expedientes y se
+   cambia desde aquí. Va en ámbar para distinguirlo de lo que trae cada
+   cliente -azul- y de lo que has tocado tú -verde-. */
+.hueco.fijo{background:var(--aviso-fondo);border:1.5px solid var(--aviso);color:#6b3f00}
 .hueco.coincide{outline:3px solid var(--aviso);outline-offset:1px;z-index:1}
 .hueco.abierto{outline:3px solid var(--acento);outline-offset:1px;z-index:3}
 .popover-hueco{

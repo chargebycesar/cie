@@ -5,9 +5,11 @@
  * vive en el almacenamiento de este navegador.
  */
 
-import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups } from "./motor.js?v=202609221231";
+import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
+         mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
+         mapaAnexoGaraje, aplicarOpciones, aplicarExtras } from "./motor.js?v=202609221306"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609221231";
+         normalizar } from "./cp.js?v=202609221306";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -63,7 +65,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609221231")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609221306")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -83,7 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   rellenarListas();
   aplicarValoresTecnicos(CFG.tecnica);
-  if (migrarLibreta()) guardarAjustes();
+  if (migrarLibreta() || migrarOpciones()) guardarAjustes();
   pintarLocalidades();
   pintarConfigEmpresa();
   pintarSelectorEmpresa();
@@ -656,6 +658,19 @@ $("#btn-vaciar-expedientes").addEventListener("click", () => {
 
 /* ══════════════ configuración ══════════════ */
 
+/* El emplazamiento y la ubicación eran dos valores sueltos con una X dentro.
+   Ahora son filas de opciones, con su nombre, y la X la pone el motor en la
+   elegida vaciando las demás. Lo viejo se quita para que no quede en la
+   pantalla un ajuste que ya no hace nada. */
+function migrarOpciones() {
+  const f = CFG.valores_fijos_mtd || {};
+  let cambio = false;
+  for (const viejo of ["emplazamiento_planta_baja", "ubicacion_centralizacion_modular"]) {
+    if (viejo in f) { delete f[viejo]; cambio = true; }
+  }
+  return cambio;
+}
+
 /* ══════════════ las empresas instaladoras ══════════════ */
 
 /* Se puede tener más de una: el mismo programa hace boletines de una empresa o
@@ -914,15 +929,14 @@ const ETIQUETAS_FIJOS = {
   lga_material: "L.G.A. material", igm_nominal: "I.G.M. nominal",
   igm_poder_corte: "I.G.M. poder de corte",
   num_derivaciones: "Nº de derivaciones", modulo_tipo: "Módulo, tipo",
-  modulo_situacion: "Módulo, situación", tierra_tipo: "Tierra, tipo",
+  modulo_situacion: "Módulo, situación", tierra_tipo: "Puesta a tierra, tipo",
   tierra_electrodos: "Tierra, electrodos",
   tierra_linea_enlace: "Tierra, línea de enlace",
   presupuesto_materiales: "Presupuesto, materiales (€)",
   presupuesto_mano_obra: "Presupuesto, mano de obra (€)",
   presupuesto_total: "Presupuesto, total (€)",
   num_suministros_monofasicos: "Nº de suministros monofásicos",
-  emplazamiento_planta_baja: "Emplazamiento: planta baja",
-  ubicacion_centralizacion_modular: "Ubicación: centralización modular",
+  emplazamiento: "Emplazamiento", ubicacion: "Ubicación",
   adjunta_esquema_unifilar: "Se adjunta: esquema unifilar",
   adjunta_planos_planta: "Se adjunta: planos de planta",
   adjunta_croquis_trazado: "Se adjunta: croquis del trazado",
@@ -951,7 +965,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221231")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221306")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -978,117 +992,16 @@ function pintarPestanasDoc() {
   });
 }
 
-async function pintarPanelDoc() {
-  const caja = $("#panel-doc");
-  if (!caja) return;
-  const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO) || DOCS_CONFIG[0];
-  caja.innerHTML = "";
+/* ══════════════ lo que se pone en cada documento ══════════════ */
 
-  // --- lo que la aplicación pone siempre
-  if (doc.fijos) {
-    const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
-    const rejilla = document.createElement("div");
-    rejilla.className = "rejilla";
-    Object.keys(valores).forEach(k => {
-      const v = valores[k];
-      const l = document.createElement("label");
-      if (typeof v === "boolean") {
-        l.className = "c4 casilla";
-        l.innerHTML = '<input type="checkbox" data-fijo="' + escapar(k) + '"'
-          + (v ? " checked" : "") + "> " + escapar(etiquetaFija(k));
-      } else {
-        l.className = "c4";
-        l.innerHTML = escapar(etiquetaFija(k))
-          + '<input data-fijo="' + escapar(k) + '" value="' + escapar(v) + '">';
-      }
-      rejilla.appendChild(l);
-    });
-    caja.appendChild(rejilla);
-  } else {
-    const p = document.createElement("p");
-    p.className = "ayuda";
-    p.textContent = "Este impreso se rellena entero con los datos del cliente. "
-      + "Abajo puedes añadir cualquier otro campo suyo.";
-    caja.appendChild(p);
-  }
+/* La pantalla es el propio impreso. Cada hueco enseña **lo que va a salir
+   escrito**, con el color de quién lo pone: el expediente, lo que tienes puesto
+   por defecto, o lo que has cambiado tú. Pinchas encima y lo cambias ahí mismo.
 
-  // --- cualquier otro campo del impreso
-  const extras = CFG.extras || (CFG.extras = {});
-  const mios = extras[doc.id] || (extras[doc.id] = {});
-  const campos = doc.id === "CIE" ? [] : await camposDelImpreso(doc.id);
-  const porNombre = {};
-  campos.forEach(c => { porNombre[c.n] = c; });
-
-  const zona = document.createElement("div");
-  zona.className = "extras";
-  zona.innerHTML = "<h3>Otros campos de este impreso</h3>"
-    + '<p class="ayuda">' + (doc.id === "CIE"
-      ? "Escribe la celda del certificado (por ejemplo A28) y lo que quieras "
-        + "que ponga."
-      : "Elige el campo y escribe lo que quieras que ponga. En una casilla, "
-        + "escribe <strong>sí</strong> o <strong>no</strong>.")
-    + "</p>";
-
-  Object.keys(mios).forEach(nombre => {
-    const valor = mios[nombre];
-    const c = porNombre[nombre];
-    const fila = document.createElement("div");
-    fila.className = "fila-extra";
-    fila.innerHTML =
-      '<span class="campo">' + escapar(c && c.e ? c.e : nombre) + "</span>"
-      + '<span class="nombre">' + escapar(nombre)
-      + (c ? " · pág. " + c.p : "") + "</span>"
-      + (typeof valor === "boolean"
-        ? '<label class="casilla"><input type="checkbox" data-extra="'
-          + escapar(nombre) + '"' + (valor ? " checked" : "") + "> marcada</label>"
-        : '<input type="text" data-extra="' + escapar(nombre)
-          + '" value="' + escapar(valor) + '">')
-      + '<button type="button" data-quitar="' + escapar(nombre)
-      + '" title="Quitar">×</button>';
-    zona.appendChild(fila);
-  });
-
-  if (doc.id === "CIE") {
-    const anadir = document.createElement("div");
-    anadir.className = "anadir-extra";
-    anadir.innerHTML = '<input id="extra-nombre" placeholder="Celda, p. ej. A28">'
-      + '<input id="extra-valor" placeholder="Lo que debe poner">'
-      + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
-    zona.appendChild(anadir);
-  }
-  caja.appendChild(zona);
-  // Para los impresos con formulario: la hoja con sus huecos, para pinchar el que sea
-  if (doc.id !== "CIE") caja.appendChild(await mapaVisual(doc, campos, mios));
-
-  zona.querySelectorAll("[data-quitar]").forEach(b => {
-    b.addEventListener("click", () => {
-      guardarPanelDoc();
-      delete (CFG.extras[doc.id] || {})[b.dataset.quitar];
-      guardarAjustes();
-      pintarPanelDoc();
-    });
-  });
-
-  const btnAnadir = $("#btn-anadir-extra");
-  if (btnAnadir) btnAnadir.addEventListener("click", () => {
-    const nombre = ($("#extra-nombre").value || "").trim();
-    const valor = ($("#extra-valor").value || "").trim();
-    if (!nombre) { avisar("#aviso-doc", "Elige antes un campo."); return; }
-    guardarPanelDoc();
-    const bajo = valor.toLowerCase();
-    const c = porNombre[nombre];
-    const esCasilla = (c && c.t === "casilla")
-      || ["sí", "si", "no"].indexOf(bajo) !== -1;
-    CFG.extras[doc.id][nombre] = esCasilla
-      ? ["no", "", "0"].indexOf(bajo) === -1
-      : valor;
-    guardarAjustes();
-    pintarPanelDoc();
-    avisar("#aviso-doc", "Añadido.");
-  });
-}
-
-/* ══════════════ la hoja con sus huecos ══════════════ */
+   Antes esto estaba en tres sitios -una rejilla de valores, una lista de campos
+   sueltos y la hoja- y ninguno de los tres enseñaba el resultado. Así era fácil
+   acabar con dos opciones de la misma fila marcadas sin enterarte hasta abrir
+   el PDF. */
 
 /* Tamaño en puntos de cada página del impreso (lo escribe indice_campos.py). */
 async function paginasDelImpreso(archivo) {
@@ -1099,26 +1012,155 @@ async function paginasDelImpreso(archivo) {
 let ZOOM_MAPA = 1;
 const ZOOMS = [1, 1.5, 2];
 
-function textoHueco(c, valor) {
-  if (valor === undefined) return "";
+const MAPAS_DOC = {
+  "MTD.pdf": mapaMtd,
+  "ANEXO_IVE.pdf": mapaAnexoIve,
+  "UNIFILAR.pdf": mapaUnifilar,
+  "SOLICITUD.pdf": mapaSolicitud,
+  "AUTORIZACION.pdf": mapaAutorizacion,
+  "ANEXO_GARAJE.pdf": mapaAnexoGaraje,
+};
+
+/* Arma el documento con una configuración cualquiera. Es el mismo camino que
+   sigue generar: el mapa del impreso, las opciones excluyentes y encima lo
+   tuyo. Si los datos del formulario todavía no dan para calcular, devuelve
+   vacío en vez de romper: esto es una vista, no el expediente. */
+function armarDoc(doc, cfg) {
+  const hacer = MAPAS_DOC[doc.id];
+  if (!hacer) return { mapa: {}, casillas: {} };
+  const datos = datosFormulario();
+  let partes;
+  try {
+    const tec = valoresTecnicos(datos, cfg);
+    partes = hacer(datos, cfg, tec, calcular(datos, tec, cfg));
+  } catch (e) {
+    return { mapa: {}, casillas: {} };
+  }
+  aplicarOpciones(partes, cfg, doc.id);
+  aplicarExtras(partes, (cfg.extras || {})[doc.id], cfg, doc.id);
+  return partes;
+}
+
+/* Qué hueco ocupa cada valor predefinido.
+
+   En vez de llevar una lista a mano -que se queda vieja en cuanto alguien toca
+   el mapa del impreso- se le pregunta al motor: se pone una marca imposible en
+   cada valor, se arma el documento y se mira en qué hueco ha salido. Con las
+   casillas no vale una marca, así que se apagan y se mira cuál cambia. */
+const MARCA = "⁣";
+
+function huecosDeLosFijos(doc) {
+  if (!doc.fijos || !MAPAS_DOC[doc.id]) return {};
+  const base = CFG[doc.fijos] || {};
+  const grupos = (CFG.opciones_excluyentes || {})[doc.id] || {};
+  const fuera = {};
+  for (const clave of Object.keys(base)) {
+    if (grupos[clave]) continue;             // esos se ven en su fila entera
+    if (typeof base[clave] === "boolean") {
+      const si = armarDoc(doc, { ...CFG, [doc.fijos]: { ...base, [clave]: true } });
+      const no = armarDoc(doc, { ...CFG, [doc.fijos]: { ...base, [clave]: false } });
+      Object.keys(si.casillas).forEach(k => {
+        if (si.casillas[k] !== no.casillas[k]) fuera[k] = clave;
+      });
+      continue;
+    }
+    const marca = MARCA + clave;
+    const { mapa } = armarDoc(doc, { ...CFG, [doc.fijos]: { ...base, [clave]: marca } });
+    Object.entries(mapa).forEach(([campo, v]) => {
+      if (String(v ?? "").includes(marca)) fuera[campo] = clave;
+    });
+  }
+  return fuera;
+}
+
+/* Todo lo que hace falta para pintar la hoja, junto. */
+function vistaDelDoc(doc) {
+  const grupos = (CFG.opciones_excluyentes || {})[doc.id] || {};
+  const deGrupo = {};
+  Object.entries(grupos).forEach(([clave, g]) => {
+    Object.entries(g.opciones || {}).forEach(([nombre, campo]) => {
+      deGrupo[campo] = { clave, grupo: g, nombre };
+    });
+  });
+  return {
+    previo: armarDoc(doc, CFG),
+    deFijo: huecosDeLosFijos(doc),
+    deGrupo,
+    mios: (CFG.extras || {})[doc.id] || {},
+  };
+}
+
+function valorDeHueco(c, vista) {
+  const { mapa, casillas } = vista.previo;
+  return casillas[c.n] !== undefined ? casillas[c.n] : mapa[c.n];
+}
+
+/* Quién pone lo que hay en este hueco. El orden importa: lo tuyo va por encima
+   de lo predefinido, y lo predefinido por encima de lo que trae el expediente. */
+function origenDeHueco(c, vista) {
+  if (vista.mios[c.n] !== undefined) return "mio";
+  if (vista.deGrupo[c.n] || vista.deFijo[c.n]) return "fijo";
+  const v = valorDeHueco(c, vista);
+  return v === undefined || v === "" || v === false ? "" : "app";
+}
+
+function textoHueco(valor) {
+  if (valor === undefined || valor === null) return "";
   if (valor === true) return "✓";
-  if (valor === false) return "—";
+  if (valor === false) return "";
   return String(valor);
 }
 
-function tituloHueco(c, valor) {
+function tituloHueco(c, vista) {
   const partes = [];
-  if (c.e) partes.push(c.e);
+  const g = vista.deGrupo[c.n];
+  const clave = vista.deFijo[c.n];
+  if (g) partes.push(g.grupo.etiqueta + ": " + g.nombre);
+  else if (clave) partes.push(etiquetaFija(clave));
+  else if (c.e) partes.push(c.e);
   partes.push(c.n + " · pág. " + c.p + (c.t === "casilla" ? " · casilla" : ""));
-  if (c.a) partes.push("Lo rellena la aplicación con los datos del expediente");
-  if (valor !== undefined) partes.push("Tú has puesto: " + textoHueco(c, valor));
+  const v = textoHueco(valorDeHueco(c, vista));
+  if (v !== "") partes.push("Saldrá: " + v);
+  partes.push({
+    mio: "Lo has cambiado tú",
+    fijo: "Viene puesto por defecto. Pincha para cambiarlo",
+    app: "Lo pone el expediente de cada cliente",
+  }[origenDeHueco(c, vista)] || "Vacío. Pincha y escribe");
   return partes.join("\n");
 }
 
-/* La hoja de cada página con un botón encima de cada hueco rellenable. Las
-   posiciones vienen en puntos del PDF y se pasan a porcentaje, así la hoja
-   puede ampliarse o encogerse sin recalcular nada. */
-async function mapaVisual(doc, campos, mios) {
+/* Con qué texto se busca un hueco: lo que pone al lado en el impreso, su
+   nombre, el nombre de lo que va dentro y lo que va a salir escrito. */
+function buscableDelHueco(c, vista) {
+  const g = vista.deGrupo[c.n];
+  const clave = vista.deFijo[c.n];
+  return [c.e, c.n, g && g.grupo.etiqueta, g && g.nombre,
+          clave && etiquetaFija(clave), textoHueco(valorDeHueco(c, vista))]
+    .filter(Boolean).join(" ").toLowerCase();
+}
+
+async function pintarPanelDoc() {
+  const caja = $("#panel-doc");
+  if (!caja) return;
+  const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO) || DOCS_CONFIG[0];
+  caja.innerHTML = "";
+
+  // El CIE no es un PDF con huecos, sino una hoja de cálculo con celdas: no
+  // hay hoja que enseñar, así que se queda con su rejilla.
+  // En la hoja cada hueco se guarda en su ventanita, así que el botón de
+  // abajo sobra: solo lo necesita la rejilla del CIE.
+  const boton = $("#btn-guardar-doc");
+  if (boton) boton.hidden = doc.id !== "CIE";
+  if (doc.id === "CIE") { pintarPanelCie(caja, doc); return; }
+
+  const campos = await camposDelImpreso(doc.id);
+  caja.appendChild(await mapaVisual(doc, campos, vistaDelDoc(doc)));
+}
+
+/* La hoja de cada página con un botón encima de cada hueco. Las posiciones
+   vienen en puntos del PDF y se pasan a porcentaje, así la hoja puede
+   ampliarse o encogerse sin recalcular nada. */
+async function mapaVisual(doc, campos, vista) {
   const raiz = document.createElement("div");
   raiz.className = "mapa-impreso";
   const paginas = await paginasDelImpreso(doc.id);
@@ -1129,15 +1171,19 @@ async function mapaVisual(doc, campos, mios) {
     return raiz;
   }
 
-  raiz.innerHTML = '<div class="barra-mapa">'
-    + '<input id="hueco-buscar" placeholder="Buscar un hueco por lo que pone al lado o por su nombre…">'
+  raiz.innerHTML = '<p class="ayuda">Esto es lo que va a decir el documento con '
+    + "lo que hay ahora en el formulario. Pincha cualquier hueco para cambiarlo "
+    + "y dejarlo puesto para los siguientes.</p>"
+    + '<div class="barra-mapa">'
+    + '<input id="hueco-buscar" placeholder="Buscar: «tierra», «presupuesto», «Texto41»…">'
     + '<span id="hueco-cuenta" class="pista"></span>'
     + '<div class="zoom">' + ZOOMS.map(z => '<button type="button" data-zoom="' + z + '"'
       + (z === ZOOM_MAPA ? ' class="activa"' : "") + ">" + Math.round(z * 100) + " %</button>").join("")
     + "</div></div>"
-    + '<div class="leyenda-huecos"><span>Hueco libre: pincha y escribe</span>'
-    + '<span class="l-mio">Lo has puesto tú</span>'
-    + '<span class="l-app">Lo rellena la aplicación</span></div>';
+    + '<div class="leyenda-huecos"><span class="l-app">Lo pone el expediente</span>'
+    + '<span class="l-fijo">Predeterminado</span>'
+    + '<span class="l-mio">Lo has cambiado tú</span>'
+    + "<span>Vacío: pincha y escribe</span></div>";
 
   const contenedor = document.createElement("div");
   contenedor.className = "paginas-impreso";
@@ -1151,25 +1197,24 @@ async function mapaVisual(doc, campos, mios) {
       + '<img src="plantillas/img/' + escapar(base) + "-" + num + '.png" alt="Página ' + num
       + " de " + escapar(doc.titulo) + '" loading="lazy" draggable="false">';
     campos.filter(c => c.p === num && c.w).forEach(c => {
-      const valor = mios[c.n];
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "hueco" + (c.a ? " app" : "") + (valor !== undefined ? " mio" : "");
+      const origen = origenDeHueco(c, vista);
+      b.className = "hueco" + (origen ? " " + origen : "");
       b.dataset.hueco = c.n;
       b.style.left = (c.x / anchoPt * 100).toFixed(3) + "%";
       b.style.top = (c.y / altoPt * 100).toFixed(3) + "%";
       b.style.width = (c.w / anchoPt * 100).toFixed(3) + "%";
       b.style.height = (c.h / altoPt * 100).toFixed(3) + "%";
-      b.title = tituloHueco(c, valor);
-      b.textContent = textoHueco(c, valor);
-      b.addEventListener("click", e => { e.stopPropagation(); abrirHueco(doc, c, pag, b); });
+      b.title = tituloHueco(c, vista);
+      b.textContent = textoHueco(valorDeHueco(c, vista));
+      b.addEventListener("click", e => { e.stopPropagation(); abrirHueco(doc, c, vista, pag, b); });
       pag.appendChild(b);
     });
     contenedor.appendChild(pag);
   });
   raiz.appendChild(contenedor);
 
-  // zoom
   raiz.querySelectorAll("[data-zoom]").forEach(b => b.addEventListener("click", () => {
     ZOOM_MAPA = Number(b.dataset.zoom);
     raiz.querySelectorAll("[data-zoom]").forEach(x => x.classList.toggle("activa", x === b));
@@ -1185,9 +1230,8 @@ async function mapaVisual(doc, campos, mios) {
     const q = buscar.value.trim().toLowerCase();
     let primero = null, n = 0;
     contenedor.querySelectorAll(".hueco").forEach(b => {
-      const c = porNombre[b.dataset.hueco] || {};
-      const encaja = q && ((c.e || "").toLowerCase().includes(q) || c.n.toLowerCase().includes(q)
-        || String(mios[c.n] === undefined ? "" : mios[c.n]).toLowerCase().includes(q));
+      const c = porNombre[b.dataset.hueco];
+      const encaja = q && c && buscableDelHueco(c, vista).includes(q);
       b.classList.toggle("coincide", !!encaja);
       if (encaja) { n++; if (!primero) primero = b; }
     });
@@ -1195,7 +1239,6 @@ async function mapaVisual(doc, campos, mios) {
     if (primero) primero.scrollIntoView({ block: "center", behavior: "smooth" });
   });
 
-  // pinchar fuera cierra la ventanita
   contenedor.addEventListener("click", cerrarHueco);
   return raiz;
 }
@@ -1205,62 +1248,184 @@ function cerrarHueco() {
   $$(".hueco.abierto").forEach(b => b.classList.remove("abierto"));
 }
 
-/* La ventanita para escribir lo que va en un hueco. Guarda al momento. */
-function abrirHueco(doc, c, pag, boton) {
+/* La ventanita de un hueco. Tiene tres caras, según lo que haya debajo:
+
+   - una fila de opciones excluyentes -Picas / Placas / Mallas-: sale la fila
+     entera y solo se puede elegir una;
+   - un valor de los que la aplicación pone siempre: sale con su nombre de
+     verdad y se cambia ahí, en vez de añadir otro encima;
+   - cualquier otro hueco: texto libre o casilla.
+
+   En los tres casos se guarda como predeterminado, que es para lo que se viene
+   a esta pantalla. */
+function abrirHueco(doc, c, vista, pag, boton) {
   cerrarHueco();
   boton.classList.add("abierto");
-  const mios = (CFG.extras || (CFG.extras = {}))[doc.id] || (CFG.extras[doc.id] = {});
-  const valor = mios[c.n];
-  const casilla = c.t === "casilla" || typeof valor === "boolean";
+  const g = vista.deGrupo[c.n];
+  const clave = vista.deFijo[c.n];
   const pop = document.createElement("div");
   pop.className = "popover-hueco";
-  pop.innerHTML = '<p class="titulo">' + escapar(c.e || (casilla ? "Casilla" : "Hueco de texto")) + "</p>"
-    + '<p class="nombre">' + escapar(c.n) + " · pág. " + c.p + "</p>"
-    + (c.a ? '<p class="aviso-app">Este hueco lo rellena la aplicación con los datos de cada '
-      + "expediente. Si escribes algo, lo sustituirá en todos.</p>" : "")
-    + (casilla
-      ? '<label class="casilla"><input type="checkbox" id="hueco-valor"' + (valor === true ? " checked" : "") + "> marcada</label>"
-      : '<input type="text" id="hueco-valor" placeholder="Lo que debe poner" value="' + escapar(valor === undefined ? "" : String(valor)) + '">')
-    + '<div class="botones"><button type="button" class="principal" id="hueco-guardar">Guardar</button>'
-    + '<button type="button" class="secundario" id="hueco-cerrar">Cerrar</button>'
-    + (valor !== undefined ? '<button type="button" class="secundario quitar" id="hueco-quitar">Quitar</button>' : "")
-    + "</div>";
-  // debajo del hueco, sin salirse de la hoja
+
+  const botones = '<div class="botones">'
+    + '<button type="button" class="principal" id="hueco-guardar">Guardar como predeterminado</button>'
+    + '<button type="button" class="secundario" id="hueco-cerrar">Cerrar</button>';
+  const cabecera = '<p class="titulo">'
+    + escapar(g ? g.grupo.etiqueta : (clave ? etiquetaFija(clave) : (c.e || "Hueco libre")))
+    + '</p><p class="nombre">' + escapar(c.n) + " · pág. " + c.p + "</p>";
+
+  if (g) {
+    pop.innerHTML = cabecera
+      + '<p class="ayuda">Solo puede ir marcada una. Al elegir, las demás de esta '
+      + "fila se quedan vacías.</p>"
+      + Object.keys(g.grupo.opciones).map(nombre =>
+        '<label class="casilla"><input type="radio" name="opcion-hueco" value="'
+        + escapar(nombre) + '"'
+        + (nombre === String(CFG[doc.fijos][g.clave] || "") ? " checked" : "") + "> "
+        + escapar(nombre) + "</label>").join("")
+      + botones + "</div>";
+  } else if (clave) {
+    const valor = CFG[doc.fijos][clave];
+    pop.innerHTML = cabecera
+      + '<p class="ayuda">Esto se pone igual en todos los expedientes.</p>'
+      + (typeof valor === "boolean"
+        ? '<label class="casilla"><input type="checkbox" id="hueco-valor"'
+          + (valor ? " checked" : "") + "> marcada</label>"
+        : '<input type="text" id="hueco-valor" value="' + escapar(valor) + '">')
+      + botones + "</div>";
+  } else {
+    const mio = vista.mios[c.n];
+    const casilla = c.t === "casilla" || typeof mio === "boolean";
+    const saldra = valorDeHueco(c, vista);
+    pop.innerHTML = cabecera
+      + (origenDeHueco(c, vista) === "app"
+        ? '<p class="aviso-app">Este hueco lo rellena la aplicación con los datos de '
+          + "cada expediente. Ahora pondría <strong>" + escapar(textoHueco(saldra))
+          + "</strong>. Si escribes algo aquí, lo sustituirá en todos.</p>" : "")
+      + (casilla
+        ? '<label class="casilla"><input type="checkbox" id="hueco-valor"'
+          + (mio === true || (mio === undefined && saldra === true) ? " checked" : "")
+          + "> marcada</label>"
+        : '<input type="text" id="hueco-valor" placeholder="Lo que debe poner" value="'
+          + escapar(mio === undefined ? "" : String(mio)) + '">')
+      + botones
+      + (mio !== undefined
+        ? '<button type="button" class="secundario quitar" id="hueco-quitar">Quitar lo mío</button>'
+        : "")
+      + "</div>";
+  }
+
   const izquierda = Math.max(0, Math.min(boton.offsetLeft, pag.clientWidth - 310));
   pop.style.left = izquierda + "px";
   pop.style.top = (boton.offsetTop + boton.offsetHeight + 4) + "px";
   pop.addEventListener("click", e => e.stopPropagation());
   pag.appendChild(pop);
 
-  const guardarHueco = () => {
-    guardarPanelDoc(); // lo que haya escrito en los valores fijos no se pierde
-    const campo = pop.querySelector("#hueco-valor");
-    if (casilla) mios[c.n] = campo.checked;
-    else {
-      const texto = campo.value.trim();
-      if (texto === "") delete mios[c.n]; else mios[c.n] = texto;
+  const guardar = () => {
+    if (g) {
+      const elegida = pop.querySelector("input[name=opcion-hueco]:checked");
+      if (!elegida) { avisar("#aviso-doc", "Elige una."); return; }
+      CFG[doc.fijos][g.clave] = elegida.value;
+      // Si alguna de esta fila estaba puesta a mano, sobra: la fila la manda
+      // el predeterminado, y dos fuentes para lo mismo es justo lo que hacía
+      // salir dos marcadas.
+      const mios = (CFG.extras || (CFG.extras = {}))[doc.id] || {};
+      Object.values(g.grupo.opciones).forEach(campo => { delete mios[campo]; });
+    } else if (clave) {
+      const campo = pop.querySelector("#hueco-valor");
+      CFG[doc.fijos][clave] = campo.type === "checkbox" ? campo.checked : campo.value.trim();
+    } else {
+      const mios = (CFG.extras || (CFG.extras = {}))[doc.id] || (CFG.extras[doc.id] = {});
+      const campo = pop.querySelector("#hueco-valor");
+      if (campo.type === "checkbox") mios[c.n] = campo.checked;
+      else {
+        const texto = campo.value.trim();
+        if (texto === "") delete mios[c.n]; else mios[c.n] = texto;
+      }
     }
     guardarAjustes();
     repintarPanelDoc();
-    avisar("#aviso-doc", "Guardado.");
+    avisar("#aviso-doc", "Guardado. Sale así en todos los expedientes.");
   };
-  pop.querySelector("#hueco-guardar").addEventListener("click", guardarHueco);
+
+  pop.querySelector("#hueco-guardar").addEventListener("click", guardar);
   pop.querySelector("#hueco-cerrar").addEventListener("click", cerrarHueco);
   const quitar = pop.querySelector("#hueco-quitar");
   if (quitar) quitar.addEventListener("click", () => {
-    guardarPanelDoc();
-    delete mios[c.n];
+    delete ((CFG.extras || {})[doc.id] || {})[c.n];
     guardarAjustes();
     repintarPanelDoc();
-    avisar("#aviso-doc", "Quitado.");
+    avisar("#aviso-doc", "Quitado. Vuelve a salir lo de siempre.");
   });
-  const entrada = pop.querySelector("#hueco-valor");
-  entrada.focus();
-  entrada.addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); guardarHueco(); }
-    if (e.key === "Escape") cerrarHueco();
-  });
+  const entrada = pop.querySelector("#hueco-valor") || pop.querySelector("input");
+  if (entrada) {
+    entrada.focus();
+    entrada.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); guardar(); }
+      if (e.key === "Escape") cerrarHueco();
+    });
+  }
   pop.scrollIntoView({ block: "nearest" });
+}
+
+/* El CIE va aparte: es una hoja de cálculo, no un PDF con huecos, así que no
+   hay hoja donde pinchar. Se queda con su rejilla de valores y sus celdas. */
+function pintarPanelCie(caja, doc) {
+  const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
+  const rejilla = document.createElement("div");
+  rejilla.className = "rejilla";
+  Object.keys(valores).forEach(k => {
+    const v = valores[k];
+    const l = document.createElement("label");
+    if (typeof v === "boolean") {
+      l.className = "c4 casilla";
+      l.innerHTML = '<input type="checkbox" data-fijo="' + escapar(k) + '"'
+        + (v ? " checked" : "") + "> " + escapar(etiquetaFija(k));
+    } else {
+      l.className = "c4";
+      l.innerHTML = escapar(etiquetaFija(k))
+        + '<input data-fijo="' + escapar(k) + '" value="' + escapar(v) + '">';
+    }
+    rejilla.appendChild(l);
+  });
+  caja.appendChild(rejilla);
+
+  const mios = (CFG.extras || (CFG.extras = {})).CIE || (CFG.extras.CIE = {});
+  const zona = document.createElement("div");
+  zona.className = "extras";
+  zona.innerHTML = "<h3>Otras celdas del certificado</h3>"
+    + '<p class="ayuda">Escribe la celda (por ejemplo A28) y lo que quieras que ponga.</p>';
+  Object.keys(mios).forEach(celda => {
+    const fila = document.createElement("div");
+    fila.className = "fila-extra";
+    fila.innerHTML = '<span class="campo">' + escapar(celda) + "</span>"
+      + '<input type="text" data-extra="' + escapar(celda) + '" value="'
+      + escapar(mios[celda]) + '">'
+      + '<button type="button" data-quitar="' + escapar(celda) + '" title="Quitar">×</button>';
+    zona.appendChild(fila);
+  });
+  const anadir = document.createElement("div");
+  anadir.className = "anadir-extra";
+  anadir.innerHTML = '<input id="extra-nombre" placeholder="Celda, p. ej. A28">'
+    + '<input id="extra-valor" placeholder="Lo que debe poner">'
+    + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
+  zona.appendChild(anadir);
+  caja.appendChild(zona);
+
+  zona.querySelectorAll("[data-quitar]").forEach(b => b.addEventListener("click", () => {
+    guardarPanelDoc();
+    delete CFG.extras.CIE[b.dataset.quitar];
+    guardarAjustes();
+    pintarPanelDoc();
+  }));
+  $("#btn-anadir-extra").addEventListener("click", () => {
+    const celda = ($("#extra-nombre").value || "").trim().toUpperCase();
+    if (!celda) { avisar("#aviso-doc", "Escribe antes la celda."); return; }
+    guardarPanelDoc();
+    CFG.extras.CIE[celda] = ($("#extra-valor").value || "").trim();
+    guardarAjustes();
+    pintarPanelDoc();
+    avisar("#aviso-doc", "Añadido.");
+  });
 }
 
 /* Vuelve a pintar el panel sin perder el sitio por el que ibas en la hoja. */
@@ -1274,24 +1439,20 @@ async function repintarPanelDoc() {
   window.scrollTo(0, ventana);
 }
 
-/* Recoge lo que hay escrito en el panel. Se llama al guardar y también al
-   cambiar de pestaña, para no perder nada por el camino. */
+/* Recoge lo que hay escrito en la rejilla del CIE. En los demás impresos cada
+   hueco se guarda al pulsar Guardar en su ventanita, así que no queda nada
+   suelto que recoger. */
 function guardarPanelDoc() {
   const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO);
-  if (!doc || !$("#panel-doc")) return;
-  if (doc.fijos) {
-    const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
-    $$("#panel-doc [data-fijo]").forEach(i => {
-      valores[i.dataset.fijo] = i.type === "checkbox" ? i.checked : i.value;
-    });
-  }
-  const extras = CFG.extras || (CFG.extras = {});
-  const mios = extras[doc.id] || {};
-  $$("#panel-doc [data-extra]").forEach(i => {
-    mios[i.dataset.extra] = i.type === "checkbox" ? i.checked : i.value;
+  if (!doc || doc.id !== "CIE" || !$("#panel-doc")) return;
+  const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
+  $$("#panel-doc [data-fijo]").forEach(i => {
+    valores[i.dataset.fijo] = i.type === "checkbox" ? i.checked : i.value;
   });
-  extras[doc.id] = mios;
+  const mios = (CFG.extras || (CFG.extras = {})).CIE || (CFG.extras.CIE = {});
+  $$("#panel-doc [data-extra]").forEach(i => { mios[i.dataset.extra] = i.value; });
 }
+
 
 $("#btn-guardar-doc").addEventListener("click", () => {
   guardarPanelDoc();
