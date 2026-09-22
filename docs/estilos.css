@@ -42,7 +42,12 @@ header{
 header h1{margin:0;font-size:20px;letter-spacing:.2px}
 header p{margin:2px 0 0;font-size:13px;color:#9db2d2}
 
-.pestanas{display:flex;gap:4px;margin-top:16px}
+/* Las tres pestañas no caben en una línea de móvil -se salían 17 px y con
+   ellas se iba toda la página de lado-, así que bajan a dos líneas. Se ven las
+   tres enteras, que en un teléfono es mejor que tener que descubrir que esa
+   franja se arrastra. El hueco entre líneas es 0: las activas se pegan por
+   abajo al fondo de la página y una separación ahí dejaría una raya. */
+.pestanas{display:flex;flex-wrap:wrap;gap:0 4px;margin-top:16px}
 .pestana{
   background:transparent;border:0;color:#9db2d2;
   padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;
