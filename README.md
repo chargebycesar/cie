@@ -177,12 +177,32 @@ salir**. Cada hueco enseña lo que va a decir y de dónde sale:
 Se pincha cualquiera y se cambia ahí mismo, con un solo botón: **Guardar como
 predeterminado**. Hay buscador -que encuentra por lo que pone al lado, por el
 nombre del campo, por el nombre del ajuste o por lo que va a salir escrito- y
-zoom al 150 y 200 % para los impresos de letra pequeña. El CIE, que no es un
-formulario sino una hoja de cálculo, sigue por celdas (A28, B43...).
+zoom al 150 y 200 % para los impresos de letra pequeña.
 
 Antes esto estaba **en tres sitios**: una rejilla de valores con nombre, una
 lista de campos sueltos y la hoja. Ninguno de los tres enseñaba el resultado, y
 los tres se pisaban entre sí.
+
+#### El CIE también, aunque no sea un formulario
+
+Los otros seis impresos son PDF con huecos: cada hueco trae su nombre, su sitio
+y su tamaño. El CIE no: es una hoja de cálculo que se dibuja encima del impreso
+en blanco, y `cie_mapa.json` solo guarda **un punto y una alineación** por celda,
+que es lo que necesita el motor para escribir.
+
+Para poder pincharla hace falta un recuadro, y se reconstruye la rejilla de la
+hoja de cálculo: el nombre de la celda dice su columna, y de las celdas
+alineadas a la izquierda sale dónde empieza cada columna. Lo ancho de cada una
+llega hasta la siguiente celda que tenga algo escrito, que es donde de verdad se
+acaba el sitio; así una celda combinada como «INFRAESTRUCTURA DE RECARGA
+VEHÍCULO ELÉCTRICO» se ve entera y una vacía se queda del ancho de su columna.
+
+Dos celdas del CIE no salen de la configuración sino de una fórmula: el número
+del certificado y el resultado de comprobar el CUPS. Se enseñan igual, marcadas
+como «lo pone el expediente», para que al pincharlas avise: escribir ahí un
+número de certificado fijo dejaría **todos** los expedientes con el mismo.
+
+El recuadro del sello de la EICI sigue vacío, en la pantalla y en el documento.
 
 #### Filas donde solo puede ir marcada una
 

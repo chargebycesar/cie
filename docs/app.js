@@ -7,9 +7,11 @@
 
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
-         mapaAnexoGaraje, aplicarOpciones, aplicarExtras } from "./motor.js?v=202609221410"
+         mapaAnexoGaraje, celdasCie, validarCups,
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202609221438"
+import { identificador } from "./cie.js?v=202609221438"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609221410";
+         normalizar } from "./cp.js?v=202609221438";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -65,7 +67,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609221410")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609221438")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -911,7 +913,10 @@ $("#btn-guardar-preset").addEventListener("click", () => {
    expediente pida algo distinto. */
 const DOCS_CONFIG = [
   { id: "MTD.pdf", titulo: "MTD", fijos: "valores_fijos_mtd" },
-  { id: "CIE", titulo: "CIE", fijos: "valores_fijos_cie" },
+  // El CIE no es un formulario con huecos: es una hoja de cálculo y se escribe
+  // encima del impreso en blanco. La hoja que se enseña es esa, y sus «huecos»
+  // son las celdas, que salen de cie_mapa.json.
+  { id: "CIE", titulo: "CIE", fijos: "valores_fijos_cie", hoja: "CIE_base.pdf" },
   { id: "ANEXO_IVE.pdf", titulo: "Anexo IVE" },
   { id: "UNIFILAR.pdf", titulo: "Unifilar" },
   { id: "SOLICITUD.pdf", titulo: "Solicitud" },
@@ -965,12 +970,125 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221410")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221438")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
   }
   return CAMPOS_IMPRESOS[archivo] || [];
+}
+
+/* ── las celdas del CIE, como si fueran huecos ──────────────────────────
+
+   cie_mapa.json guarda dónde se escribe cada celda -un punto y una alineación-,
+   que es lo que necesita el motor. Para poder pincharla hace falta además un
+   recuadro, y ese se reconstruye aquí: el nombre de la celda dice su columna, y
+   de las celdas alineadas a la izquierda se saca dónde empieza cada columna de
+   la hoja de cálculo. Lo que le toca a lo ancho llega hasta donde empieza la
+   siguiente celda con algo, que es como se ve una celda combinada. */
+
+let MAPA_CIE = null;
+let REJILLA_CIE = null;
+
+async function mapaCie() {
+  if (MAPA_CIE === null) {
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202609221438")).json(); }
+    catch (e) { MAPA_CIE = {}; }
+  }
+  return MAPA_CIE;
+}
+
+/* "H7" -> {col: 8, fila: 7}. La columna en número, para poder ordenar. */
+function celdaPartida(celda) {
+  const m = /^([A-Z]+)(\d+)$/.exec(celda);
+  if (!m) return null;
+  let col = 0;
+  for (const c of m[1]) col = col * 26 + (c.charCodeAt(0) - 64);
+  return { col, fila: Number(m[2]) };
+}
+
+/* Dónde empieza cada columna. Se mide en las celdas alineadas a la izquierda
+   -su x es el borde de la columna más un pelo- y las que falten se reparten
+   entre las conocidas. */
+function columnasDelCie(posiciones) {
+  const izquierda = new Map();
+  for (const [celda, sitio] of Object.entries(posiciones)) {
+    const c = celdaPartida(celda);
+    if (!c || sitio.alineacion !== "izquierda") continue;
+    const x = sitio.x - 1.5;
+    if (!izquierda.has(c.col) || x < izquierda.get(c.col)) izquierda.set(c.col, x);
+  }
+  const sabidas = [...izquierda.keys()].sort((a, b) => a - b);
+  if (!sabidas.length) return () => 0;
+  const primera = sabidas[0], ultima = sabidas[sabidas.length - 1];
+  const ancho = sabidas.length > 1
+    ? (izquierda.get(ultima) - izquierda.get(primera)) / (ultima - primera) : 20;
+  return col => {
+    if (izquierda.has(col)) return izquierda.get(col);
+    if (col < primera) return izquierda.get(primera) - (primera - col) * ancho;
+    if (col > ultima) return izquierda.get(ultima) + (col - ultima) * ancho;
+    let antes = primera, despues = ultima;
+    for (const s of sabidas) { if (s < col) antes = s; else { despues = s; break; } }
+    const t = (col - antes) / (despues - antes);
+    return izquierda.get(antes) + t * (izquierda.get(despues) - izquierda.get(antes));
+  };
+}
+
+/* La rejilla de la hoja: dónde empieza cada columna y qué alto tiene cada fila.
+   Esto no cambia nunca, así que se calcula una vez. */
+async function rejillaCie() {
+  if (REJILLA_CIE) return REJILLA_CIE;
+  const posiciones = (await mapaCie()).posiciones || {};
+  const bordeDe = columnasDelCie(posiciones);
+  const bases = [...new Set(Object.values(posiciones).map(s => s.linea_base))]
+    .sort((a, b) => a - b);
+  const alto = new Map();
+  bases.forEach((b, i) => alto.set(b, (bases[i + 1] ?? b + 12) - b));
+  const porFila = new Map();
+  for (const [celda, sitio] of Object.entries(posiciones)) {
+    const c = celdaPartida(celda);
+    if (!c) continue;
+    const fila = porFila.get(sitio.linea_base) || [];
+    fila.push({ celda, col: c.col });
+    porFila.set(sitio.linea_base, fila);
+  }
+  porFila.forEach(f => f.sort((a, b) => a.col - b.col));
+  REJILLA_CIE = { posiciones, bordeDe, alto, porFila };
+  return REJILLA_CIE;
+}
+
+/* Las celdas, con su recuadro.
+
+   Lo ancho depende de lo que ponga dentro: una celda combinada -«INFRAESTRUCTURA
+   DE RECARGA VEHÍCULO ELÉCTRICO» ocupa media fila- tiene que verse entera, y una
+   vacía se queda del ancho de su columna. El tope es la siguiente celda que
+   tenga algo escrito, que es donde de verdad se acaba el sitio. */
+async function celdasComoHuecos(vista) {
+  const { posiciones, bordeDe, alto, porFila } = await rejillaCie();
+  const valor = celda => String((vista && vista.previo.mapa[celda]) ?? "");
+  const fuera = [];
+  for (const [celda, sitio] of Object.entries(posiciones)) {
+    const c = celdaPartida(celda);
+    if (!c) continue;
+    const tam = sitio.tam || 7.41;
+    const x0 = bordeDe(c.col);
+    const ocupada = (porFila.get(sitio.linea_base) || [])
+      .find(x => x.col > c.col && valor(x.celda).trim());
+    const tope = ocupada ? bordeDe(ocupada.col) - 1 : x0 + 260;
+    // Helvetica ocupa algo más de media letra de ancho por cada punto de tamaño
+    const necesita = valor(celda).length * tam * 0.52 + 4;
+    const x1 = Math.min(Math.max(bordeDe(c.col + 1), x0 + necesita, x0 + 9), tope);
+    const h = Math.min(Math.max(alto.get(sitio.linea_base), tam * 1.2), tam * 2.2);
+    fuera.push({
+      n: celda, p: (sitio.pagina || 0) + 1, t: "texto", e: "",
+      x: Math.round(x0 * 10) / 10,
+      y: Math.round((sitio.linea_base + tam * 0.28 - h) * 10) / 10,
+      w: Math.round((x1 - x0) * 10) / 10,
+      h: Math.round(h * 10) / 10,
+    });
+  }
+  fuera.sort((a, b) => a.y - b.y || a.x - b.x);
+  return fuera;
 }
 
 function pintarPestanasDoc() {
@@ -1004,9 +1122,9 @@ function pintarPestanasDoc() {
    el PDF. */
 
 /* Tamaño en puntos de cada página del impreso (lo escribe indice_campos.py). */
-async function paginasDelImpreso(archivo) {
-  await camposDelImpreso(archivo);
-  return ((CAMPOS_IMPRESOS || {})._paginas || {})[archivo] || [];
+async function paginasDelImpreso(hoja) {
+  await camposDelImpreso(hoja);
+  return ((CAMPOS_IMPRESOS || {})._paginas || {})[hoja] || [];
 }
 
 let ZOOM_MAPA = 1;
@@ -1014,6 +1132,7 @@ const ZOOMS = [1, 1.5, 2];
 
 const MAPAS_DOC = {
   "MTD.pdf": mapaMtd,
+  CIE: celdasCie,
   "ANEXO_IVE.pdf": mapaAnexoIve,
   "UNIFILAR.pdf": mapaUnifilar,
   "SOLICITUD.pdf": mapaSolicitud,
@@ -1027,18 +1146,40 @@ const MAPAS_DOC = {
    vacío en vez de romper: esto es una vista, no el expediente. */
 function armarDoc(doc, cfg) {
   const hacer = MAPAS_DOC[doc.id];
-  if (!hacer) return { mapa: {}, casillas: {} };
+  if (!hacer && doc.id !== "CIE") return { mapa: {}, casillas: {} };
   const datos = datosFormulario();
   let partes;
   try {
     const tec = valoresTecnicos(datos, cfg);
-    partes = hacer(datos, cfg, tec, calcular(datos, tec, cfg));
+    const calc = calcular(datos, tec, cfg);
+    // El CIE se monta al revés que los demás: lo que trae el impreso en blanco
+    // va debajo -son rótulos dentro de celdas editables- y los datos mandan.
+    partes = doc.id === "CIE"
+      ? { mapa: { ...((MAPA_CIE || {}).valores_originales || {}),
+                  ...celdasCie(datos, cfg, tec, calc), ...calculadasCie(datos) },
+          casillas: {} }
+      : hacer(datos, cfg, tec, calc);
   } catch (e) {
     return { mapa: {}, casillas: {} };
   }
   aplicarOpciones(partes, cfg, doc.id);
   aplicarExtras(partes, (cfg.extras || {})[doc.id], cfg, doc.id);
   return partes;
+}
+
+/* Las dos celdas del CIE que salen de una fórmula y no de la configuración: el
+   número del certificado y el resultado de comprobar el CUPS. Se enseñan para
+   que la hoja diga la verdad, y de paso para que al pincharlas avise de que las
+   pone la aplicación: escribir ahí un número de certificado fijo dejaría todos
+   los expedientes con el mismo.
+
+   El número se saca una vez por sesión. Es distinto en cada expediente -por eso
+   no se guarda-, pero repintar la pantalla no tiene por qué cambiarlo. */
+let IDENT_MUESTRA = null;
+
+function calculadasCie(datos) {
+  if (!IDENT_MUESTRA) IDENT_MUESTRA = identificador();
+  return { R6: IDENT_MUESTRA, M19: validarCups(datos.cups).texto };
 }
 
 /* Qué hueco ocupa cada valor predefinido.
@@ -1147,14 +1288,18 @@ async function pintarPanelDoc() {
 
   // El CIE no es un PDF con huecos, sino una hoja de cálculo con celdas: no
   // hay hoja que enseñar, así que se queda con su rejilla.
-  // En la hoja cada hueco se guarda en su ventanita, así que el botón de
-  // abajo sobra: solo lo necesita la rejilla del CIE.
+  // Cada hueco se guarda en su ventanita, así que el botón de abajo sobra.
   const boton = $("#btn-guardar-doc");
-  if (boton) boton.hidden = doc.id !== "CIE";
-  if (doc.id === "CIE") { pintarPanelCie(caja, doc); return; }
+  if (boton) boton.hidden = true;
 
-  const campos = await camposDelImpreso(doc.id);
-  caja.appendChild(await mapaVisual(doc, campos, vistaDelDoc(doc)));
+  // El CIE necesita tener armada la hoja antes de medir sus celdas: lo ancho de
+  // cada una depende de lo que ponga dentro.
+  if (doc.id === "CIE") await mapaCie();
+  const vista = vistaDelDoc(doc);
+  const campos = doc.id === "CIE"
+    ? await celdasComoHuecos(vista)
+    : await camposDelImpreso(doc.id);
+  caja.appendChild(await mapaVisual(doc, campos, vista));
 }
 
 /* La hoja de cada página con un botón encima de cada hueco. Las posiciones
@@ -1163,8 +1308,9 @@ async function pintarPanelDoc() {
 async function mapaVisual(doc, campos, vista) {
   const raiz = document.createElement("div");
   raiz.className = "mapa-impreso";
-  const paginas = await paginasDelImpreso(doc.id);
-  const base = doc.id.replace(/\.pdf$/i, "");
+  const hoja = doc.hoja || doc.id;
+  const paginas = await paginasDelImpreso(hoja);
+  const base = hoja.replace(/\.pdf$/i, "");
   if (!paginas.length || !campos.some(c => c.w)) {
     raiz.innerHTML = '<p class="sin-mapa">No tengo la hoja de este impreso. '
       + "Ejecuta <code>python herramientas/indice_campos.py</code> y vuelve a publicar.</p>";
@@ -1367,67 +1513,6 @@ function abrirHueco(doc, c, vista, pag, boton) {
   pop.scrollIntoView({ block: "nearest" });
 }
 
-/* El CIE va aparte: es una hoja de cálculo, no un PDF con huecos, así que no
-   hay hoja donde pinchar. Se queda con su rejilla de valores y sus celdas. */
-function pintarPanelCie(caja, doc) {
-  const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
-  const rejilla = document.createElement("div");
-  rejilla.className = "rejilla";
-  Object.keys(valores).forEach(k => {
-    const v = valores[k];
-    const l = document.createElement("label");
-    if (typeof v === "boolean") {
-      l.className = "c4 casilla";
-      l.innerHTML = '<input type="checkbox" data-fijo="' + escapar(k) + '"'
-        + (v ? " checked" : "") + "> " + escapar(etiquetaFija(k));
-    } else {
-      l.className = "c4";
-      l.innerHTML = escapar(etiquetaFija(k))
-        + '<input data-fijo="' + escapar(k) + '" value="' + escapar(v) + '">';
-    }
-    rejilla.appendChild(l);
-  });
-  caja.appendChild(rejilla);
-
-  const mios = (CFG.extras || (CFG.extras = {})).CIE || (CFG.extras.CIE = {});
-  const zona = document.createElement("div");
-  zona.className = "extras";
-  zona.innerHTML = "<h3>Otras celdas del certificado</h3>"
-    + '<p class="ayuda">Escribe la celda (por ejemplo A28) y lo que quieras que ponga.</p>';
-  Object.keys(mios).forEach(celda => {
-    const fila = document.createElement("div");
-    fila.className = "fila-extra";
-    fila.innerHTML = '<span class="campo">' + escapar(celda) + "</span>"
-      + '<input type="text" data-extra="' + escapar(celda) + '" value="'
-      + escapar(mios[celda]) + '">'
-      + '<button type="button" data-quitar="' + escapar(celda) + '" title="Quitar">×</button>';
-    zona.appendChild(fila);
-  });
-  const anadir = document.createElement("div");
-  anadir.className = "anadir-extra";
-  anadir.innerHTML = '<input id="extra-nombre" placeholder="Celda, p. ej. A28">'
-    + '<input id="extra-valor" placeholder="Lo que debe poner">'
-    + '<button type="button" class="secundario" id="btn-anadir-extra">Añadir</button>';
-  zona.appendChild(anadir);
-  caja.appendChild(zona);
-
-  zona.querySelectorAll("[data-quitar]").forEach(b => b.addEventListener("click", () => {
-    guardarPanelDoc();
-    delete CFG.extras.CIE[b.dataset.quitar];
-    guardarAjustes();
-    pintarPanelDoc();
-  }));
-  $("#btn-anadir-extra").addEventListener("click", () => {
-    const celda = ($("#extra-nombre").value || "").trim().toUpperCase();
-    if (!celda) { avisar("#aviso-doc", "Escribe antes la celda."); return; }
-    guardarPanelDoc();
-    CFG.extras.CIE[celda] = ($("#extra-valor").value || "").trim();
-    guardarAjustes();
-    pintarPanelDoc();
-    avisar("#aviso-doc", "Añadido.");
-  });
-}
-
 /* Vuelve a pintar el panel sin perder el sitio por el que ibas en la hoja. */
 async function repintarPanelDoc() {
   const lista = $(".paginas-impreso");
@@ -1439,19 +1524,9 @@ async function repintarPanelDoc() {
   window.scrollTo(0, ventana);
 }
 
-/* Recoge lo que hay escrito en la rejilla del CIE. En los demás impresos cada
-   hueco se guarda al pulsar Guardar en su ventanita, así que no queda nada
-   suelto que recoger. */
-function guardarPanelDoc() {
-  const doc = DOCS_CONFIG.find(d => d.id === DOC_ACTIVO);
-  if (!doc || doc.id !== "CIE" || !$("#panel-doc")) return;
-  const valores = CFG[doc.fijos] || (CFG[doc.fijos] = {});
-  $$("#panel-doc [data-fijo]").forEach(i => {
-    valores[i.dataset.fijo] = i.type === "checkbox" ? i.checked : i.value;
-  });
-  const mios = (CFG.extras || (CFG.extras = {})).CIE || (CFG.extras.CIE = {});
-  $$("#panel-doc [data-extra]").forEach(i => { mios[i.dataset.extra] = i.value; });
-}
+/* Ya no queda nada suelto que recoger: cada hueco se guarda al pulsar Guardar
+   en su ventanita. Se conserva porque las pestañas la llaman al cambiar. */
+function guardarPanelDoc() {}
 
 
 $("#btn-guardar-doc").addEventListener("click", () => {

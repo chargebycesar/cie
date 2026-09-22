@@ -161,6 +161,10 @@ Las filas donde solo puede ir marcada una -puesta a tierra, emplazamiento,
 ubicación- salen enteras, y al elegir una las demás se quedan vacías solas. Ya
 no se puede sacar un documento con dos marcadas.
 
+El CIE va igual que los demás, con sus celdas sobre la hoja. Dos de ellas -el
+número del certificado y la comprobación del CUPS- las calcula la aplicación en
+cada expediente: se ven, pero si escribes encima saldrán iguales en todos.
+
 Los **valores técnicos por defecto** se guardan desde la pantalla principal:
 ajusta el apartado «Conductor y protecciones» a lo que instalas habitualmente y
 pulsa **Guardar estos valores como predeterminados**. Se tocan en un solo sitio

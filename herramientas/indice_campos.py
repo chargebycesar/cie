@@ -204,8 +204,11 @@ def main():
     marcas = huecos_que_rellena_la_app()
     indice = {"_paginas": {}}
     for archivo in sorted(os.listdir(PLANTILLAS)):
-        if not archivo.lower().endswith(".pdf") or archivo == "CIE_base.pdf":
+        if not archivo.lower().endswith(".pdf"):
             continue
+        # El CIE no es un formulario: no tiene huecos, se escribe encima con las
+        # posiciones de cie_mapa.json. Pero la hoja hace falta igual, para poder
+        # pinchar las celdas sobre ella como en los demas impresos.
         base = os.path.splitext(archivo)[0]
         campos, paginas = campos_de(os.path.join(PLANTILLAS, archivo),
                                     marcas.get(archivo, set()), base)
