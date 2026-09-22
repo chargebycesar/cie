@@ -1543,6 +1543,10 @@ def generar(datos, aplanar_mtd=True):
         "nombre": "CIE - Certificado de Instalacion Electrica",
         "ok": ok_cie,
         "estado": estado_cie,
+        # El numero del certificado, igual que lo devuelve el motor del
+        # navegador. Lo usa herramientas/formato_cie.py para comprobar que sale
+        # escrito en el documento.
+        "identificador": (rutas or {}).get("identificador", ""),
     })
     if estado_cie and "COMPLET" not in estado_cie.upper():
         resultado["avisos"].append(

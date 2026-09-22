@@ -163,11 +163,13 @@ def generar_cie_pdf(celdas, destino, texto_cups="", mapa=None, momento=None):
     ident = identificador(momento)
     texto_estado, _ = estado(mapa, celdas)
 
-    # R4 -el "COMPLETADO" / "FALTAN DATOS"- NO se dibuja: ese recuadro es el
-    # del sello y la fecha de la EICI, y va en blanco para que lo firmen ellos.
-    # Era un aviso de la hoja de calculo, para saber si ya se podia imprimir, y
-    # eso se ensena en la pantalla, no en el documento que se entrega.
+    # R4 es el "COMPLETADO" de arriba. Va en el documento, y va en el sitio
+    # exacto donde lo pone la hoja de calculo: sin el, la EICI rechaza el
+    # certificado. Lo que queda en blanco es el hueco grande de al lado, que es
+    # donde ellos sellan y firman; son dos cosas distintas dentro del mismo
+    # recuadro y confundirlas costo un rechazo.
     calculadas = {
+        mapa["calculadas"].get("R4", "estado"): ("R4", texto_estado),
         mapa["calculadas"].get("R6", "identificador"): ("R6", ident),
         mapa["calculadas"].get("M19", "cups_ok"): ("M19", texto_cups),
     }

@@ -32,11 +32,25 @@ que terminar diciendo **«Los dos motores dan exactamente lo mismo»**.
 Si tocas la lógica de uno de los dos motores y se te olvida el otro, esto lo
 canta enseguida.
 
+## 3. Que el CIE sigue siendo el impreso oficial
+
+```bash
+npm run formato
+```
+
+Genera un certificado y comprueba que lleva **todo** lo que lleva el impreso en
+blanco, más el aviso de arriba —COMPLETADO o CIE INCOMPLETO— y el identificador.
+
+La EICI rechaza el certificado si le falta algo del formato, y eso no se ve
+mirando por encima. Pasó una vez: el COMPLETADO dejó de escribirse y nadie se
+enteró hasta que lo devolvieron.
+
 ## Qué mirar a ojo, de vez en cuando
 
 Genera un expediente de verdad y comprueba:
 
-- El CIE dice **COMPLETADO** y trae su identificador.
+- El CIE dice **COMPLETADO** arriba a la derecha, debajo del recuadro del
+  sello de la EICI, y trae su identificador en la banda verde.
 - El MTD sale **sin los botones** ni el aviso amarillo de la cabecera.
 - El anexo del garaje, si dejas la comunidad en blanco, deja los huecos **en
   gris** con la pista de qué escribir.

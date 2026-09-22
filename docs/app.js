@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202609221438"
-import { identificador } from "./cie.js?v=202609221438"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202609221907"
+import { identificador, estado } from "./cie.js?v=202609221907"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202609221438";
+         normalizar } from "./cp.js?v=202609221907";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -67,7 +67,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202609221438")).json();
+    CFG = await (await fetch("config-inicial.json?v=202609221907")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -970,7 +970,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221438")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202609221907")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -992,7 +992,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202609221438")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202609221907")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
@@ -1154,11 +1154,13 @@ function armarDoc(doc, cfg) {
     const calc = calcular(datos, tec, cfg);
     // El CIE se monta al revés que los demás: lo que trae el impreso en blanco
     // va debajo -son rótulos dentro de celdas editables- y los datos mandan.
-    partes = doc.id === "CIE"
-      ? { mapa: { ...((MAPA_CIE || {}).valores_originales || {}),
-                  ...celdasCie(datos, cfg, tec, calc), ...calculadasCie(datos) },
-          casillas: {} }
-      : hacer(datos, cfg, tec, calc);
+    if (doc.id === "CIE") {
+      const celdas = { ...((MAPA_CIE || {}).valores_originales || {}),
+                       ...celdasCie(datos, cfg, tec, calc) };
+      partes = { mapa: { ...celdas, ...calculadasCie(datos, celdas) }, casillas: {} };
+    } else {
+      partes = hacer(datos, cfg, tec, calc);
+    }
   } catch (e) {
     return { mapa: {}, casillas: {} };
   }
@@ -1167,19 +1169,26 @@ function armarDoc(doc, cfg) {
   return partes;
 }
 
-/* Las dos celdas del CIE que salen de una fórmula y no de la configuración: el
+/* Las tres celdas del CIE que salen de una fórmula y no de la configuración: el
    número del certificado y el resultado de comprobar el CUPS. Se enseñan para
    que la hoja diga la verdad, y de paso para que al pincharlas avise de que las
    pone la aplicación: escribir ahí un número de certificado fijo dejaría todos
    los expedientes con el mismo.
 
    El número se saca una vez por sesión. Es distinto en cada expediente -por eso
-   no se guarda-, pero repintar la pantalla no tiene por qué cambiarlo. */
+   no se guarda-, pero repintar la pantalla no tiene por qué cambiarlo.
+
+   La tercera es el COMPLETADO de arriba, que es lo que mira la EICI: si sale
+   «CIE INCOMPLETO» el certificado no les vale, así que aquí se ve igual que en
+   el documento y con los datos que haya ahora en el formulario. */
 let IDENT_MUESTRA = null;
 
-function calculadasCie(datos) {
+function calculadasCie(datos, celdas) {
   if (!IDENT_MUESTRA) IDENT_MUESTRA = identificador();
-  return { R6: IDENT_MUESTRA, M19: validarCups(datos.cups).texto };
+  const mapa = MAPA_CIE || {};
+  const fuera = { R6: IDENT_MUESTRA, M19: validarCups(datos.cups).texto };
+  if (mapa.controles) fuera.R4 = estado(mapa, celdas).texto;
+  return fuera;
 }
 
 /* Qué hueco ocupa cada valor predefinido.

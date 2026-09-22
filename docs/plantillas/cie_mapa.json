@@ -48,16 +48,17 @@
   "S52": ">0,5",
   "S53": "N/A"
  },
- "_nota": "Para la version de navegador. El PDF base ya viene limpio.",
+ "_nota": "Para la version de navegador. El PDF base ya viene limpio. R4 lleva su sitio medido sobre un CIE de los que la EICI ya ha aceptado: la sonda lo dejo mal porque es una celda de formula.",
  "base_pdf": "CIE_base.pdf",
  "posiciones": {
   "R4": {
    "pagina": 0,
-   "x": 444.95,
-   "linea_base": 97.92,
+   "x": 490.3,
+   "linea_base": 107.97,
    "tam": 8.89,
    "negrita": true,
-   "alineacion": "izquierda"
+   "alineacion": "centro",
+   "medido_en_un_cie_valido": true
   },
   "R6": {
    "pagina": 0,

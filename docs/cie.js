@@ -97,11 +97,12 @@ export async function generarCie(celdas, textoCups, cargarPlantilla, lib, moment
   const ident = identificador(momento);
   const { texto: textoEstado } = estado(mapa, todas);
 
-  // R4 -el «COMPLETADO» / «FALTAN DATOS»- NO se dibuja: ese recuadro es el del
-  // sello y la fecha de la EICI, y va en blanco para que lo firmen ellos. Era
-  // un aviso de la hoja de cálculo, para saber si ya se podía imprimir, y eso
-  // se enseña en la pantalla, no en el documento que se entrega.
-  const calculadas = { R6: ident, M19: textoCups };
+  // R4 es el «COMPLETADO» de arriba. Va en el documento, y va en el sitio
+  // exacto donde lo pone la hoja de cálculo: sin él, la EICI rechaza el
+  // certificado. Lo que queda en blanco es el hueco grande de al lado, que es
+  // donde ellos sellan y firman; son dos cosas distintas dentro del mismo
+  // recuadro y confundirlas costó un rechazo.
+  const calculadas = { R4: textoEstado, R6: ident, M19: textoCups };
   const paginas = doc.getPages();
 
   for (const [celda, valor] of Object.entries({ ...todas, ...calculadas })) {

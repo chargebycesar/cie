@@ -190,6 +190,15 @@ def main():
     originales = {e["celda"]: e["original"] for e in datos["entradas"]
                   if e.get("original") and e["celda"] not in datos["calculadas"]}
 
+    # R4 -el COMPLETADO de arriba- es una celda de formula: la sonda no puede
+    # escribir dentro, asi que su sitio salio de la rejilla y salio mal. Estos
+    # numeros estan medidos sobre un CIE de los que la EICI ya ha aceptado. Si
+    # algun dia cambia el impreso, hay que volver a medirlo alli.
+    encontrados["R4"] = {
+        "pagina": 0, "x": 490.3, "linea_base": 107.97, "tam": 8.89,
+        "negrita": True, "alineacion": "centro", "medido_en_un_cie_valido": True,
+    }
+
     mapa = {
         "tapar": tapar,
         "valores_originales": originales,

@@ -344,13 +344,28 @@ que valen los dos a la vez: la leyenda se ve gris y lo que escribe el cliente
 sale negro, como el resto del documento. Sin JavaScript dentro del PDF, que no
 todos los visores lo ejecutan.
 
-### El recuadro del sello del CIE va vacío
+### El COMPLETADO del CIE, y el recuadro que sí va vacío
 
-El CIE lleva arriba a la derecha un recuadro de **Sello y fecha EICI**: es donde
-firma y sella la EICI, así que sale en blanco. La hoja de cálculo original
-escribía ahí «COMPLETADO» o «FALTAN DATOS» para avisarte de si ya podías
-imprimir; ese aviso sigue estando, pero **en la pantalla**, junto al documento
-generado, no dentro del papel que entregas.
+Arriba a la derecha del CIE hay un recuadro redondeado con dos cosas dentro que
+son distintas y que es fácil confundir:
+
+| | |
+|---|---|
+| **«Sello y fecha EICI»** y el hueco grande | Va **vacío**. Ahí sellan y firman ellos |
+| **«COMPLETADO»**, abajo a la derecha | Lo escribe la hoja de cálculo. **Tiene que salir** |
+
+Confundirlas costó un certificado rechazado: se dejó de escribir el COMPLETADO
+entero, y sin él la EICI no lo admite. Ahora vuelve a salir, en el sitio exacto
+donde lo pone la hoja: la posición está medida sobre un CIE de los que ya han
+aceptado, porque la sonda que sitúa las celdas no puede entrar en una celda de
+fórmula y la había dejado diez puntos más arriba y cincuenta a la izquierda.
+
+Si los datos no dan para completarlo, ahí pone **CIE INCOMPLETO** —igual que la
+hoja de cálculo— y la aplicación avisa antes de entregar.
+
+Para que no vuelva a pasar en silencio, `npm run formato` genera un certificado
+y comprueba que lleva todo lo que lleva el impreso en blanco, más ese aviso y el
+identificador.
 
 ### Cuatro recuadros que salían en blanco
 
