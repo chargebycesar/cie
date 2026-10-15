@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610152253"
-import { identificador, estado } from "./cie.js?v=202610152253"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610152254"
+import { identificador, estado } from "./cie.js?v=202610152254"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202610152253";
+         normalizar } from "./cp.js?v=202610152254";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -69,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202610152253")).json();
+    CFG = await (await fetch("config-inicial.json?v=202610152254")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -986,7 +986,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610152253")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610152254")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1008,7 +1008,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610152253")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610152254")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
