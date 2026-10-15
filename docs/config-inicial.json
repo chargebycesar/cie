@@ -37,7 +37,9 @@
   "fusible_seguridad": "63",
   "tipo_instalacion_di": "BANDJ.",
   "tipo_instalacion_circuito": "S.T.C.",
-  "plaza_planta": "-1"
+  "plaza_planta": "-1",
+  "extra_tipo": "",
+  "extra_a": ""
  },
  "por_seccion": {
   "4": {
@@ -344,6 +346,26 @@
      "Otros": "Texto272"
     }
    }
+  }
+ },
+ "tipos_proteccion_extra": {
+  "dpn": {
+   "etiqueta": "DPN en la línea del punto de recarga",
+   "texto": "DPN",
+   "donde": "linea",
+   "amperios": "32"
+  },
+  "magneto": {
+   "etiqueta": "Magnetotérmico en la línea del punto de recarga",
+   "texto": "MAGNETOTERMICO",
+   "donde": "linea",
+   "amperios": "32"
+  },
+  "dpn_schuko": {
+   "etiqueta": "DPN con base schuko, en derivación",
+   "texto": "DPN CON BASE SCHUKO",
+   "donde": "derivacion",
+   "amperios": "16"
   }
  }
 }

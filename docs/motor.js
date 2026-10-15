@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610151831";
-import { rellenarPdf } from "./relleno.js?v=202610151831";
-import { generarCie } from "./cie.js?v=202610151831";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610152141";
+import { rellenarPdf } from "./relleno.js?v=202610152141";
+import { generarCie } from "./cie.js?v=202610152141";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -213,7 +213,44 @@ function partir(texto, ancho) {
   return lineas;
 }
 
-export function lineasDescripcion(datos, tec, calc) {
+/* Lo que se añade al cuadro además del general y el diferencial.
+
+   Un cuadro de verdad suele llevar el DPN que protege la línea del cargador y,
+   a veces, otro DPN con su base schuko para enchufar cualquier cosa. Son dos
+   cosas distintas y se dibujan distinto:
+
+   - El DPN o el magnetotérmico de la línea del cargador van **en serie**, en la
+     misma vertical, porque toda la corriente del cargador pasa por ellos.
+   - El DPN con base schuko va **en derivación**: del diferencial salen dos
+     líneas, una al cargador y otra a esa base. En serie estaría mal, porque el
+     cargador quedaría colgando de un calibre que no es el suyo. */
+export function proteccionesExtra(tec, cfg) {
+  const tipos = (cfg || {}).tipos_proteccion_extra || {};
+  const tipo = t(tec.extra_tipo);
+  if (!tipo || !tipos[tipo]) return [];
+  const suyo = tipos[tipo];
+  const amperios = t(tec.extra_a) || t(suyo.amperios);
+  const polos = tec.fases || "2";
+  return [{
+    tipo,
+    texto: suyo.texto || tipo.toUpperCase(),
+    donde: suyo.donde || "linea",
+    conBase: tipo === "dpn_schuko",
+    polos,
+    intensidad: amperios,
+    rotulo: `${polos}x${amperios}`,
+  }];
+}
+
+/* Cómo se cuenta cada una en la memoria y en el certificado. */
+export function textoProteccion(p) {
+  const donde = p.donde === "derivacion"
+    ? "EN DERIVACIÓN DEL DIFERENCIAL"
+    : "EN LA LÍNEA DEL PUNTO DE RECARGA";
+  return `${p.texto} ${p.rotulo} A ${donde}`;
+}
+
+export function lineasDescripcion(datos, tec, calc, cfg) {
   const plaza = t(datos.plaza_numero);
   const planta = t(datos.plaza_planta);
   const desc = t(datos.descripcion_punto) || "PUNTO DE RECARGA V.E. TIPO 2";
@@ -238,6 +275,11 @@ export function lineasDescripcion(datos, tec, calc) {
       + `2P CLASE ${tec.dif_clase} "SI"`,
     "PROTECTOR SOBRETENSIONES TRANSITORIAS Y PERMANENTES",
   ]);
+
+  // lo que se haya añadido al cuadro, que también hay que declararlo
+  for (const p of proteccionesExtra(tec, cfg || {})) {
+    lineas.push(textoProteccion(p));
+  }
 
   const extra = t(datos.observaciones);
   if (extra) {
@@ -388,7 +430,7 @@ export function mapaMtd(datos, cfg, tec, calc) {
   m.Texto416 = "";
   for (let n = 399; n <= 415; n++) m["Texto" + n] = "";
 
-  lineasDescripcion(datos, tec, calc).forEach((linea, i) => {
+  lineasDescripcion(datos, tec, calc, cfg).forEach((linea, i) => {
     m["Texto" + (1590 + i)] = linea;
   });
 
@@ -644,6 +686,8 @@ export function celdasCie(datos, cfg, tec, calc) {
     `Nº DE PUNTOS DE CONEXIÓN: ${t(datos.num_puntos) || "1"}, `
       + `ESQUEMA ${t(datos.esquema) || "2"}. `
       + `${(t(datos.descripcion_punto) || "CONECTOR TIPO 2 MENNEKES").toUpperCase()}`,
+    // lo que lleve el cuadro ademas del general y el diferencial
+    ...proteccionesExtra(tec, cfg).map(textoProteccion),
   ].filter(Boolean).join("\n");
 
   return {
@@ -737,6 +781,100 @@ export function aplicarExtras(partes, extras, cfg = {}, archivo = "") {
   return partes;
 }
 
+/* ══════════════ las protecciones añadidas, dibujadas ══════════════ */
+
+/* Medido sobre docs/plantillas/UNIFILAR.pdf después de pasarle
+   herramientas/hacer_unifilar.py, que es quien hace el sitio.
+   Todo en coordenadas del impreso, contando desde arriba. */
+const UNI = {
+  alto: 842,
+  busX: 420.7,
+  bajoDiferencial: 249,
+  hastaRecuadro: 345,
+  calco: { x0: 398, y0: 217, x1: 434, y1: 236 },   // el interruptor del esquema
+  primero: 262,
+  paso: 34,
+  rotuloX1: 398.9,
+  ramaX: 465,
+  baseX: 505,
+  grosor: 0.9,
+};
+
+/* El dibujo del impreso va con el cero arriba; pdf-lib lo cuenta desde abajo. */
+const arriba = y => UNI.alto - y;
+
+/* La base de enchufe: media circunferencia, su diámetro y la barra de tierra,
+   que es lo que distingue una schuko de una base sin toma de tierra. Se dibuja
+   con un trazado, que en pdf-lib sí cuenta la y hacia abajo. */
+function schukoPath(largo) {
+  const r = 6.5, c = largo;
+  return `M 0 0 L ${c} 0`
+    + ` M ${c} ${-r} A ${r} ${r} 0 0 1 ${c} ${r}`
+    + ` M ${c} ${-r} L ${c} ${r}`
+    + ` M ${c + 3} ${-4} L ${c + 3} ${4}`;
+}
+
+/* Añade al esquema los aparatos que lleve el cuadro además de los de serie.
+
+   El símbolo del interruptor no se redibuja: se calca el que ya trae el
+   esquema y se estampa donde toca, así que el trazo es el mismo.
+
+   Los de la línea del cargador van en la vertical, uno debajo de otro. Los de
+   derivación salen hacia la derecha: del diferencial parten dos líneas, una al
+   cargador y otra a la base de enchufe. Por eso las derivaciones se dibujan
+   primero, pegadas al diferencial: si salieran por debajo, el cargador y la
+   base colgarían del mismo calibre y el esquema estaría mal. */
+export async function dibujarProtecciones(doc, pagina, plantilla, protecciones, lib) {
+  if (!protecciones || !protecciones.length) return 0;
+  const { PDFDocument, rgb, StandardFonts } = lib;
+  const fuente = await PDFDocument.load(plantilla, { updateMetadata: false });
+  const c = UNI.calco;
+  const recorte = await doc.embedPage(fuente.getPage(0), {
+    left: c.x0, right: c.x1, bottom: arriba(c.y1), top: arriba(c.y0),
+  });
+  const ancho = c.x1 - c.x0, alto = c.y1 - c.y0;
+  const desvio = UNI.busX - c.x0;
+  const helv = await doc.embedFont(StandardFonts.Helvetica);
+  const negro = rgb(0, 0, 0);
+
+  const ordenadas = protecciones.filter(p => p.donde === "derivacion")
+    .concat(protecciones.filter(p => p.donde !== "derivacion"));
+  let puestos = 0;
+  for (const p of ordenadas.slice(0, 2)) {
+    const y = UNI.primero + puestos * UNI.paso;
+    if (y + alto > UNI.hastaRecuadro - 6) break;
+    const enRama = p.donde === "derivacion";
+    const eje = enRama ? UNI.ramaX : UNI.busX;
+    if (enRama) {
+      pagina.drawLine({
+        start: { x: UNI.busX, y: arriba(y) }, end: { x: eje, y: arriba(y) },
+        thickness: UNI.grosor, color: negro,
+      });
+    }
+    pagina.drawPage(recorte, {
+      x: eje - desvio, y: arriba(y + alto), width: ancho, height: alto,
+    });
+    if (p.rotulo) {
+      const w = helv.widthOfTextAtSize(p.rotulo, 8);
+      if (enRama) {
+        pagina.drawText(p.rotulo, { x: eje - w / 2, y: arriba(y - 3),
+                                    size: 8, font: helv, color: negro });
+      } else {
+        pagina.drawText(p.rotulo, { x: UNI.rotuloX1 - w, y: arriba(y + 12),
+                                    size: 8, font: helv, color: negro });
+      }
+    }
+    if (p.conBase) {
+      pagina.drawSvgPath(schukoPath(UNI.baseX - eje), {
+        x: eje, y: arriba(y + alto), borderColor: negro,
+        borderWidth: UNI.grosor, color: undefined,
+      });
+    }
+    puestos++;
+  }
+  return puestos;
+}
+
 /* ══════════════ generar el expediente ══════════════ */
 
 const DOCUMENTOS = [
@@ -815,10 +953,14 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opcion
       aplicarOpciones(partes, cfg, doc.archivo);
       aplicarExtras(partes, (cfg.extras || {})[doc.archivo], cfg, doc.archivo);
 
+      const plantilla = await cargarPlantilla(doc.archivo);
       const r = await rellenarPdf(
-        await cargarPlantilla(doc.archivo),
-        partes.mapa, partes.casillas, cfg, partes.pistas, lib,
-        { quitarBotones: doc.quitarBotones, aplanar: doc.aplanar && aplanarMtd });
+        plantilla, partes.mapa, partes.casillas, cfg, partes.pistas, lib,
+        { quitarBotones: doc.quitarBotones, aplanar: doc.aplanar && aplanarMtd,
+          // el unifilar lleva encima lo que se haya añadido al cuadro
+          despues: doc.tipo !== "unifilar" ? null : async (pdf, pagina) =>
+            dibujarProtecciones(pdf, pagina, plantilla,
+                                proteccionesExtra(tec, cfg), lib) });
       documentos.push({ nombre: doc.nombre, ok: true, bytes: r.bytes,
                         campos: r.escritos, faltan: r.noEncontrados });
     } catch (err) {

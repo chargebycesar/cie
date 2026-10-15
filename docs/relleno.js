@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202610151831";
+import { mayus } from "./util.js?v=202610152141";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
@@ -228,6 +228,16 @@ export async function rellenarPdf(bytes, mapa, casillas, cfg, pistas, lib, opcio
       form.flatten();
     } catch (e) {
       noEncontrados.push(`(no se ha podido aplanar: ${String(e).slice(0, 90)})`);
+    }
+  }
+
+  // Lo que haya que dibujar encima -en el unifilar, las protecciones que lleve
+  // el cuadro- va aquí: con los campos ya escritos y antes de guardar.
+  if (opciones && opciones.despues) {
+    try {
+      await opciones.despues(doc, doc.getPage(0));
+    } catch (e) {
+      noEncontrados.push(`(no se ha podido dibujar encima: ${String(e).slice(0, 80)})`);
     }
   }
 

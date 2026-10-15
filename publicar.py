@@ -354,6 +354,20 @@ def _otra_cuenta(salida):
     return False
 
 
+def destinos():
+    """A que repositorios se sube.
+
+    Se puede publicar la misma aplicacion en dos sitios a la vez: basta con
+    anadirle al remoto una segunda direccion de envio y git sube a las dos de
+    una vez. Esto solo sirve para poder decir cuales son y que paginas salen.
+    """
+    codigo, salida = git("remote", "get-url", "--push", "--all", "origin",
+                         callado=True)
+    if codigo != 0 or not salida.strip():
+        codigo, salida = git("remote", "get-url", "origin", callado=True)
+    return [x.strip() for x in salida.splitlines() if x.strip()]
+
+
 def pagina_de(url):
     """De https://github.com/usuario/repo.git a la direccion de la web."""
     m = re.search(r"github\.com[/:]([^/]+)/(.+?)(?:\.git)?/?$", url)
@@ -478,10 +492,13 @@ def main():
                 {web or "https://TU-USUARIO.github.io/TU-REPOSITORIO/"}
             """)
     else:
+        paginas = [pagina_de(u) or u for u in destinos()] or [web or url]
+        cuales = (chr(10) + " " * 16).join(paginas)
         aviso(f"""
-            Ya esta publicado. GitHub tarda un par de minutos en
-            actualizar la pagina:
-                {web or url}
+            Ya esta publicado{" en los dos sitios" if len(paginas) > 1 else ""}.
+            GitHub tarda un par de minutos en actualizar
+            {"las paginas" if len(paginas) > 1 else "la pagina"}:
+                {cuales}
             """)
     return 0
 

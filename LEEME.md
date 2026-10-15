@@ -108,6 +108,19 @@ emplazamiento de la autorización y la memoria descriptiva.
 
 ---
 
+## Si el cuadro lleva algo más
+
+En **Conductor y protecciones**, la fila *Protección añadida en el cuadro*:
+
+- **DPN** o **magnetotérmico** — van en la línea del punto de recarga. 32 A.
+- **DPN con base schuko** — va en derivación: del diferencial salen dos líneas,
+  una al punto de recarga y otra a la base. 16 A. Aquí **no va** el DPN de la
+  línea.
+
+Sale dibujado en el esquema unifilar y escrito en el MTD y en el CIE. Con
+**Guardar estos valores como predeterminados** se queda puesto para los
+siguientes.
+
 ## Antes de firmar, revisa siempre
 
 La aplicación rellena, no decide. Estas tres cosas conviene mirarlas:

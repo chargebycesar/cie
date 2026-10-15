@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boletines IRVE · Comunidad de Madrid</title>
-<link rel="stylesheet" href="estilos.css?v=202610151831">
+<link rel="stylesheet" href="estilos.css?v=202610152141">
 </head>
 <body>
 
@@ -217,7 +217,19 @@
             <option>Monofásico</option><option>Trifásico</option>
           </select></label>
         <label class="c3">Tensión (V) <input name="tension" value="230"></label>
+
+        <label class="c6">Protección añadida en el cuadro
+          <select name="extra_tipo" data-lista="tipos_proteccion_extra"
+                  data-vacio="Ninguna"></select></label>
+        <label class="c3">Su calibre (A) <input name="extra_a" placeholder="32"></label>
       </div>
+      <p class="ayuda">
+        Lo que lleve el cuadro además del general y el diferencial. El DPN o el
+        magnetotérmico van <strong>en la línea</strong> del punto de recarga; el
+        DPN con base schuko va <strong>en derivación</strong>, y entonces el
+        punto de recarga cuelga del diferencial. Sale dibujado en el esquema
+        unifilar y declarado en la memoria del MTD y en el CIE.
+      </p>
 
       <div class="calculo" id="calculo">
         <div><span class="k">Intensidad de cálculo</span><span class="v" id="calc-i">—</span></div>
@@ -352,6 +364,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202610151831"></script>
+<script type="module" src="app.js?v=202610152141"></script>
 </body>
 </html>

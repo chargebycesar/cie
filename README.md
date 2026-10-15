@@ -246,6 +246,37 @@ sección, material y aislamiento en la derivación individual, y el calibre del
 magnetotérmico y del diferencial con su sensibilidad y su clase. Abajo van el
 titular, el emplazamiento, la empresa instaladora y la fecha.
 
+#### Lo que lleve el cuadro además del general y el diferencial
+
+En **Conductor y protecciones** hay una fila: *Protección añadida en el cuadro*,
+con su calibre. Son **opciones, no se suman**:
+
+| | Dónde va | Calibre de siempre |
+|---|---|---|
+| Ninguna | — | — |
+| DPN | **En la línea** del punto de recarga | 32 A |
+| Magnetotérmico | **En la línea** del punto de recarga | 32 A |
+| DPN con base schuko | **En derivación** | 16 A |
+
+Con el DPN con base schuko, del diferencial parten dos líneas: una al punto de
+recarga y otra a esa base. Por eso ahí **no va el DPN de la línea**: el punto de
+recarga cuelga del diferencial.
+
+Que vaya en la línea o en derivación no se elige: lo dice el tipo, en
+`tipos_proteccion_extra` de la configuración. En serie estaría mal para la base
+schuko —el cargador quedaría colgando de un calibre que no es el suyo— y en
+derivación estaría mal para el DPN de la línea.
+
+Sale **dibujado en el esquema unifilar** y escrito en la memoria descriptiva del
+MTD y en la información adicional del CIE. Se guarda con el botón de siempre,
+**Guardar estos valores como predeterminados**, así que el caso habitual sale
+puesto desde el principio.
+
+El símbolo del interruptor no se redibuja: se calca el que ya trae el esquema y
+se estampa donde toca, así que el trazo es el mismo. La base de enchufe sí se
+dibuja —media circunferencia, su diámetro y la barra de tierra, que es lo que
+distingue una schuko de una base sin tierra.
+
 #### Sitio para las protecciones que se añadan
 
 Un cuadro de verdad lleva a menudo algo más: el DPN de la línea del cargador y,

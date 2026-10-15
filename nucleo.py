@@ -849,7 +849,7 @@ def mapa_mtd(datos, cfg, preset, calc):
         m[campo] = ""
 
     # --- pagina 6: descripcion de los trabajos ---
-    for i, linea in enumerate(lineas_descripcion(datos, preset, calc), start=1590):
+    for i, linea in enumerate(lineas_descripcion(datos, preset, calc, cfg), start=1590):
         m[f"Texto{i}"] = linea
 
     # Casilla "MEMORIA REALIZADA POR INSTALADOR AUTORIZADO"
@@ -873,7 +873,45 @@ RENGLONES_MEMORIA = 23
 ANCHO_MEMORIA = 74
 
 
-def lineas_descripcion(datos, preset, calc):
+def protecciones_extra(preset, cfg):
+    """Lo que se anade al cuadro ademas del general y el diferencial.
+
+    Un cuadro de verdad suele llevar el DPN que protege la linea del cargador y,
+    a veces, otro DPN con su base schuko para enchufar cualquier cosa. Son dos
+    cosas distintas y se dibujan distinto:
+
+    - El DPN o el magnetotermico de la linea del cargador van **en serie**, en
+      la misma vertical, porque toda la corriente del cargador pasa por ellos.
+    - El DPN con base schuko va **en derivacion**: del diferencial salen dos
+      lineas, una al cargador y otra a esa base. En serie estaria mal, porque el
+      cargador quedaria colgando de un calibre que no es el suyo.
+    """
+    tipos = (cfg or {}).get("tipos_proteccion_extra") or {}
+    tipo = t(preset.get("extra_tipo"))
+    if not tipo or tipo not in tipos:
+        return []
+    suyo = tipos[tipo]
+    amperios = t(preset.get("extra_a")) or t(suyo.get("amperios"))
+    polos = preset.get("fases") or "2"
+    return [{
+        "tipo": tipo,
+        "texto": suyo.get("texto", tipo.upper()),
+        "donde": suyo.get("donde", "linea"),
+        "con_base": tipo == "dpn_schuko",
+        "polos": polos,
+        "intensidad": amperios,
+        "rotulo": f"{polos}x{amperios}",
+    }]
+
+
+def texto_proteccion(p):
+    """Como se cuenta cada una en la memoria y en el certificado."""
+    donde = ("EN DERIVACION DEL DIFERENCIAL" if p["donde"] == "derivacion"
+             else "EN LA LINEA DEL PUNTO DE RECARGA")
+    return f"{p['texto']} {p['rotulo']} A {donde}"
+
+
+def lineas_descripcion(datos, preset, calc, cfg=None):
     """Memoria descriptiva de la ultima pagina del MTD, un renglon por linea."""
     plaza = t(datos.get("plaza_numero"))
     planta = t(datos.get("plaza_planta"))
@@ -901,6 +939,9 @@ def lineas_descripcion(datos, preset, calc):
         f"{preset['dif_sensibilidad']}mA; 2P CLASE {preset['dif_clase']} \"SI\"",
         "PROTECTOR SOBRETENSIONES TRANSITORIAS Y PERMANENTES",
     ]
+
+    # lo que se haya anadido al cuadro, que tambien hay que declararlo
+    lineas += [texto_proteccion(p) for p in protecciones_extra(preset, cfg)]
 
     extra = t(datos.get("observaciones"))
     if extra:
@@ -1179,6 +1220,8 @@ def celdas_cie(datos, cfg, preset, calc):
         f"Nº DE PUNTOS DE CONEXIÓN: {t(datos.get('num_puntos', '1'))}, "
         f"ESQUEMA {t(datos.get('esquema', '2'))}. "
         f"{t(datos.get('descripcion_punto', 'CONECTOR TIPO 2 MENNEKES')).upper()}",
+        # lo que lleve el cuadro ademas del general y el diferencial
+        *[texto_proteccion(p) for p in protecciones_extra(preset, cfg)],
     ] if x)
 
     return {
@@ -1445,6 +1488,101 @@ def aplicar_extras(mapa, casillas, extras, cfg=None, archivo=""):
     return mapa, casillas
 
 
+# --------------------------------------------------------------------------
+# Las protecciones que se anaden, dibujadas en el esquema unifilar
+# --------------------------------------------------------------------------
+
+# Medido sobre docs/plantillas/UNIFILAR.pdf despues de pasarle
+# herramientas/hacer_unifilar.py, que es quien hace el sitio.
+UNI_BUS_X = 420.7              # la vertical del cuadro
+UNI_BAJO_DIFERENCIAL = 249.0   # donde acaba el diferencial
+UNI_HASTA_RECUADRO = 345.0     # donde empieza el recuadro del punto de recarga
+UNI_CALCO = (398.0, 217.0, 434.0, 236.0)   # el interruptor que ya lleva el esquema
+UNI_PRIMERO = 262.0            # altura del primer aparato anadido
+UNI_PASO = 34.0                # de un aparato al siguiente
+UNI_ROTULO_X1 = 398.9          # los rotulos acaban aqui, como "2X40" y "30 MA"
+UNI_RAMA_X = 465.0             # la vertical de la derivacion
+UNI_BASE_X = 505.0             # el centro de la base de enchufe
+UNI_GROSOR = 0.9
+
+
+def _uni_schuko(pagina, desde_x, y):
+    """La base de enchufe: media circunferencia, su diametro y la toma de tierra.
+
+    La barra de dentro es lo que distingue una schuko de una base sin tierra.
+    """
+    r = 6.5
+    pagina.draw_line((desde_x, y), (UNI_BASE_X, y), color=(0, 0, 0), width=UNI_GROSOR)
+    pagina.draw_line((UNI_BASE_X, y - r), (UNI_BASE_X, y + r),
+                     color=(0, 0, 0), width=UNI_GROSOR)
+    pagina.draw_sector((UNI_BASE_X, y), (UNI_BASE_X, y - r), 180,
+                       color=(0, 0, 0), width=UNI_GROSOR, fill=None, fullSector=False)
+    pagina.draw_line((UNI_BASE_X + 3.0, y - 4.0), (UNI_BASE_X + 3.0, y + 4.0),
+                     color=(0, 0, 0), width=UNI_GROSOR)
+
+
+def dibujar_protecciones(destino, protecciones):
+    """Anade al esquema los aparatos que lleve el cuadro ademas de los de serie.
+
+    El simbolo del interruptor no se redibuja: se calca el que ya trae el
+    esquema y se estampa donde toca, asi que el trazo es el mismo.
+
+    Los de la linea del cargador van en la vertical, uno debajo de otro. Los de
+    derivacion salen hacia la derecha: del diferencial parten dos lineas, una al
+    cargador y otra a la base de enchufe.
+    """
+    if not protecciones:
+        return 0
+    doc = pymupdf.open(destino)
+    calco = pymupdf.open(destino)      # el mismo papel, para calcar de el
+    pagina = doc[0]
+    recorte = pymupdf.Rect(UNI_CALCO)
+    desvio = UNI_BUS_X - recorte.x0    # donde cae la vertical dentro del recorte
+    puestos = 0
+
+    # Las derivaciones van primero, pegadas al diferencial: del diferencial
+    # parten dos lineas, una al cargador y otra a la base de enchufe, asi que
+    # la rama tiene que salir POR ENCIMA de lo que proteja la linea del
+    # cargador. Si saliera por debajo, el cargador y la base colgarian del
+    # mismo calibre y el esquema estaria mal.
+    ordenadas = ([p for p in protecciones if p.get("donde") == "derivacion"]
+                 + [p for p in protecciones if p.get("donde") != "derivacion"])
+    for i, p in enumerate(ordenadas[:2]):
+        arriba = UNI_PRIMERO + i * UNI_PASO
+        if arriba + recorte.height > UNI_HASTA_RECUADRO - 6:
+            break
+        en_rama = p.get("donde") == "derivacion"
+        eje = UNI_RAMA_X if en_rama else UNI_BUS_X
+        if en_rama:
+            # el trozo que sale del diferencial hacia la derivacion
+            pagina.draw_line((UNI_BUS_X, arriba), (eje, arriba),
+                             color=(0, 0, 0), width=UNI_GROSOR)
+        pagina.show_pdf_page(
+            pymupdf.Rect(eje - desvio, arriba,
+                         eje - desvio + recorte.width, arriba + recorte.height),
+            calco, 0, clip=recorte)
+
+        rotulo = p.get("rotulo", "")
+        if rotulo:
+            ancho = pymupdf.get_text_length(rotulo, fontname="helv", fontsize=8)
+            if en_rama:
+                # encima de su interruptor: a la izquierda se juntaria con la
+                # vertical del cuadro, que pasa a tres puntos
+                pagina.insert_text((eje - ancho / 2, arriba - 3), rotulo,
+                                   fontname="helv", fontsize=8, color=(0, 0, 0))
+            else:
+                pagina.insert_text((UNI_ROTULO_X1 - ancho, arriba + 12), rotulo,
+                                   fontname="helv", fontsize=8, color=(0, 0, 0))
+        if p.get("con_base"):
+            _uni_schuko(pagina, eje, arriba + recorte.height)
+        puestos += 1
+
+    doc.saveIncr()
+    doc.close()
+    calco.close()
+    return puestos
+
+
 def generar(datos, aplanar_mtd=True):
     """Genera el expediente entero.
 
@@ -1536,6 +1674,8 @@ def generar(datos, aplanar_mtd=True):
             escritos, faltan = rellenar_pdf(origen, mapa, destino, casillas,
                                             cfg, pistas, quitar,
                                             aplanar and aplanar_mtd)
+            if tipo == "unifilar":
+                dibujar_protecciones(destino, protecciones_extra(preset, cfg))
             resultado["documentos"].append(
                 {"nombre": nombre_salida, "ok": True, "campos": escritos})
             if faltan:

@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610151831"
-import { identificador, estado } from "./cie.js?v=202610151831"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610152141"
+import { identificador, estado } from "./cie.js?v=202610152141"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202610151831";
+         normalizar } from "./cp.js?v=202610152141";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -35,6 +35,8 @@ const CAMPOS_TECNICOS = [
   // La planta no es un dato tecnico, pero casi siempre es la misma (-1), asi
   // que se recuerda igual que los demas y se puede cambiar cuando toque.
   "plaza_planta",
+  // lo que lleve el cuadro ademas del general y el diferencial
+  "extra_tipo", "extra_a",
 ];
 
 let CFG = null;
@@ -67,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202610151831")).json();
+    CFG = await (await fetch("config-inicial.json?v=202610152141")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -151,6 +153,8 @@ function rellenarListas() {
     const origen = porRuta(sel.dataset.lista);
     if (!origen) return;
     sel.innerHTML = "";
+    // «Ninguna» primero, para las listas en las que no elegir es una opción
+    if (sel.dataset.vacio) sel.add(new Option(sel.dataset.vacio, ""));
     if (Array.isArray(origen)) origen.forEach(v => sel.add(new Option(v, v)));
     else Object.entries(origen).forEach(([k, v]) =>
       sel.add(new Option(typeof v === "object" ? v.etiqueta : v, k)));
@@ -165,6 +169,18 @@ function aplicarValoresTecnicos(valores) {
     if (!c || v == null || v === "") return;
     if (c.options && ![...c.options].some(o => o.value === String(v))) c.add(new Option(v, v));
     c.value = v;
+  });
+}
+
+/* Al elegir qué lleva el cuadro, se propone el calibre de siempre: 32 A para
+   el DPN de la línea y 16 A para el de la base schuko. Se puede cambiar. */
+if (form.elements.extra_tipo) {
+  form.elements.extra_tipo.addEventListener("change", e => {
+    const suyo = (CFG.tipos_proteccion_extra || {})[e.target.value] || {};
+    const calibre = form.elements.extra_a;
+    if (calibre && !calibre.value.trim()) calibre.value = suyo.amperios || "";
+    if (!e.target.value && calibre) calibre.value = "";
+    guardarBorrador();
   });
 }
 
@@ -970,7 +986,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610151831")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610152141")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -992,7 +1008,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610151831")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610152141")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
