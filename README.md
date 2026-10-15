@@ -246,6 +246,22 @@ sección, material y aislamiento en la derivación individual, y el calibre del
 magnetotérmico y del diferencial con su sensibilidad y su clase. Abajo van el
 titular, el emplazamiento, la empresa instaladora y la fecha.
 
+#### Sitio para las protecciones que se añadan
+
+Un cuadro de verdad lleva a menudo algo más: el DPN de la línea del cargador y,
+a veces, otro DPN con su base schuko. En el esquema original entre el
+diferencial y el recuadro del punto de recarga quedaban **36 puntos**, lo justo
+para un aparato y pegado.
+
+Encima de la línea de la derivación individual había 150 puntos sin usar, así
+que `herramientas/hacer_unifilar.py` **sube ese bloque 60 puntos** —la línea, el
+general y el diferencial, con sus rótulos— y alarga la vertical. Debajo del
+diferencial quedan **96 puntos**: caben dos aparatos más con su separación.
+
+No redibuja nada: calca el bloque del propio esquema y lo estampa más arriba,
+así que el trazo es exactamente el mismo. Después hay que pasar
+`limpiar_plantillas.py`, porque el original lleva dentro datos de otro trabajo.
+
 ### Los dos botones del MTD
 
 El MTD trae dos botones, **Limpiar Campos** e **Imprimir**. Mirando el archivo
