@@ -117,7 +117,9 @@ En **Conductor y protecciones**, la fila *Protección añadida en el cuadro*:
   una al punto de recarga y otra a la base. 16 A. Aquí **no va** el DPN de la
   línea.
 
-Sale dibujado en el esquema unifilar y escrito en el MTD y en el CIE. Con
+Sale dibujado en el esquema unifilar, escrito en el MTD y en el CIE, y puesto
+en la tabla de dispositivos de la página 3 del MTD: en la segunda fila, solo su
+calibre en el apartado del magnetotérmico. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 

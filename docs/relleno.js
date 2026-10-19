@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202610152310";
+import { mayus } from "./util.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 

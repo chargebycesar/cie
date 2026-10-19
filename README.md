@@ -130,7 +130,7 @@ lo devuelves.
 | `fuente/` | Los impresos tal como llegaron y el `CIE.xls` original. **No se sube nada de aquí**: llevan dentro los datos de otros trabajos y tu NIF. Se queda en tu ordenador por si hay que rehacer una plantilla. |
 | `nucleo.py` | El mismo motor escrito en Python. Se conserva porque es el que valida al del navegador: `herramientas/comparar.py` genera el expediente por los dos caminos y compara campo por campo. |
 | `servidor.py`, `web/` | La versión de escritorio. **Su pantalla se quedó atrás** (le faltan campos que sí están en `docs/`). El motor sí está al día. Usa la del navegador. |
-| `config.json`, `prueba.json` | Tus datos y un expediente de prueba. **No se suben al repositorio.** Junto a ellos están `config.ejemplo.json` y `prueba.ejemplo.json`, que sí, con los datos en blanco. |
+| `config.json`, `prueba.json` | Tus datos y un expediente de prueba. **No se suben al repositorio.** Junto a ellos están `config.ejemplo.json` y `prueba.ejemplo.json`, que sí, con los datos en blanco. A `config.json` se le completa lo que le falte con `config.ejemplo.json`, así que una configuración de antes recibe igual lo que se haya añadido después. |
 | `publicar.bat` | Sube la aplicación a GitHub. Doble clic. Antes de subir pone el sello de versión y comprueba que no se cuela ningún dato personal. |
 | `docs/plantillas/campos.json`, `docs/plantillas/img/` | Los huecos de cada impreso (dónde están, qué tamaño tienen, qué pone al lado y si los rellena la aplicación) y la imagen de cada página, para poder pincharlos sobre la hoja desde Configuración. |
 | `herramientas/` | Preparación de los impresos y comprobaciones. Solo se usa si cambia un impreso oficial. |
@@ -267,8 +267,12 @@ Que vaya en la línea o en derivación no se elige: lo dice el tipo, en
 schuko —el cargador quedaría colgando de un calibre que no es el suyo— y en
 derivación estaría mal para el DPN de la línea.
 
-Sale **dibujado en el esquema unifilar** y escrito en la memoria descriptiva del
-MTD y en la información adicional del CIE. Se guarda con el botón de siempre,
+Sale **dibujado en el esquema unifilar**, escrito en la memoria descriptiva del
+MTD y en la información adicional del CIE, y declarado en la tabla *Datos
+técnicos dispositivos generales mando y protección* de la página 3 del MTD: la
+primera fila sigue siendo el general y el diferencial, y en la segunda se pone
+**solo el apartado del magnetotérmico** —sus polos y su intensidad, 2 × 32 o
+2 × 16— que es como lo pide el impreso. Se guarda con el botón de siempre,
 **Guardar estos valores como predeterminados**, así que el caso habitual sale
 puesto desde el principio.
 

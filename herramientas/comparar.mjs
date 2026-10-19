@@ -7,7 +7,16 @@ const RAIZ = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta
 const DOCS = path.join(RAIZ, 'docs');
 const { generarExpediente } = await import(pathToFileURL(path.join(DOCS, 'motor.js')).href);
 
-const cfg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'config.json'), 'utf8'));
+// Como en el navegador: la de fábrica debajo y la del usuario encima, para
+// que una configuración de antes reciba igual lo que se haya añadido después.
+const fabrica = JSON.parse(fs.readFileSync(path.join(DOCS, 'config-inicial.json'), 'utf8'));
+const suya = JSON.parse(fs.readFileSync(path.join(RAIZ, 'config.json'), 'utf8'));
+const cfg = { ...fabrica, ...suya };
+for (const [clave, valor] of Object.entries(fabrica)) {
+  if (valor && valor.constructor === Object && suya[clave] && suya[clave].constructor === Object) {
+    cfg[clave] = { ...valor, ...suya[clave] };
+  }
+}
 const datos = JSON.parse(fs.readFileSync(process.argv[3] || path.join(RAIZ, 'prueba.json'), 'utf8'));
 
 async function cargar(nombre, como) {

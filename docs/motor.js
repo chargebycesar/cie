@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610152310";
-import { rellenarPdf } from "./relleno.js?v=202610152310";
-import { generarCie } from "./cie.js?v=202610152310";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
+import { rellenarPdf } from "./relleno.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
+import { generarCie } from "./cie.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -429,6 +429,17 @@ export function mapaMtd(datos, cfg, tec, calc) {
   // la plantilla trae la fila 4 rellena: se vacía para que no salga dos veces
   m.Texto416 = "";
   for (let n = 399; n <= 415; n++) m["Texto" + n] = "";
+
+  // La segunda fila de los dispositivos de mando y protección (Texto324 a
+  // Texto334, las mismas columnas que la primera). Si el cuadro lleva algo
+  // más, ahí se declara, y solo en el apartado del magnetotérmico: sus polos
+  // y su intensidad. El resto de la fila se queda en blanco, que la línea de
+  // arriba ya lleva el general y el diferencial.
+  const anadida = proteccionesExtra(tec, cfg)[0];
+  if (anadida) {
+    m.Texto329 = anadida.polos;
+    m.Texto330 = anadida.intensidad;
+  }
 
   lineasDescripcion(datos, tec, calc, cfg).forEach((linea, i) => {
     m["Texto" + (1590 + i)] = linea;

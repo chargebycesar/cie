@@ -29,6 +29,7 @@ RAIZ = os.path.dirname(os.path.abspath(__file__))
 PLANTILLAS = os.path.join(RAIZ, "docs", "plantillas")
 SALIDA = os.path.join(RAIZ, "salida")
 CONFIG = os.path.join(RAIZ, "config.json")
+EJEMPLO = os.path.join(RAIZ, "config.ejemplo.json")
 
 MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
          "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"]
@@ -45,7 +46,31 @@ SOFFICE_CANDIDATOS = [
 
 def cargar_config():
     with open(CONFIG, encoding="utf-8") as f:
-        return _elegir_empresa(json.load(f))
+        return _elegir_empresa(_con_los_de_fabrica(json.load(f)))
+
+
+def _con_los_de_fabrica(cfg):
+    """Rellena lo que le falte a config.json con config.ejemplo.json.
+
+    Igual que hace el navegador, que parte de la configuracion de fabrica y le
+    pone encima la del usuario: asi, cuando se anade algo nuevo -una lista de
+    protecciones, las opciones de un impreso-, una configuracion de antes lo
+    recibe sin tener que tocarla a mano. Lo que ya tenga el usuario manda
+    siempre; esto solo pone lo que no estaba.
+    """
+    if not os.path.exists(EJEMPLO):
+        return cfg
+    try:
+        with open(EJEMPLO, encoding="utf-8") as f:
+            fabrica = json.load(f)
+    except (OSError, ValueError):
+        return cfg
+    for clave, valor in fabrica.items():
+        if clave not in cfg:
+            cfg[clave] = valor
+        elif isinstance(valor, dict) and isinstance(cfg[clave], dict):
+            cfg[clave] = {**valor, **cfg[clave]}
+    return cfg
 
 
 def _elegir_empresa(cfg):
@@ -848,6 +873,16 @@ def mapa_mtd(datos, cfg, preset, calc):
     for campo in ["Texto416"] + [f"Texto{n}" for n in range(399, 416)]:
         m[campo] = ""
 
+    # La segunda fila de los dispositivos de mando y proteccion (Texto324 a
+    # Texto334, las mismas columnas que la primera). Si el cuadro lleva algo
+    # mas, ahi se declara, y solo en el apartado del magnetotermico: sus polos
+    # y su intensidad. El resto de la fila se queda en blanco, que la linea de
+    # arriba ya lleva el general y el diferencial.
+    anadidas = protecciones_extra(preset, cfg)
+    if anadidas:
+        m["Texto329"] = anadidas[0]["polos"]
+        m["Texto330"] = anadidas[0]["intensidad"]
+
     # --- pagina 6: descripcion de los trabajos ---
     for i, linea in enumerate(lineas_descripcion(datos, preset, calc, cfg), start=1590):
         m[f"Texto{i}"] = linea
@@ -906,8 +941,8 @@ def protecciones_extra(preset, cfg):
 
 def texto_proteccion(p):
     """Como se cuenta cada una en la memoria y en el certificado."""
-    donde = ("EN DERIVACION DEL DIFERENCIAL" if p["donde"] == "derivacion"
-             else "EN LA LINEA DEL PUNTO DE RECARGA")
+    donde = ("EN DERIVACIÓN DEL DIFERENCIAL" if p["donde"] == "derivacion"
+             else "EN LA LÍNEA DEL PUNTO DE RECARGA")
     return f"{p['texto']} {p['rotulo']} A {donde}"
 
 
