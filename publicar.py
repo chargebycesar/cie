@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 import webbrowser
-from datetime import date
+from datetime import date, datetime
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
@@ -127,7 +127,8 @@ def sellar_version():
         print(f"  No he podido sellar ({e}). Se sube igual.")
         return
     try:
-        sello.main()
+        # con el sello de la fecha, nunca con el argv de este programa
+        sello.main(datetime.now().strftime("%Y%m%d%H%M"))
     except SystemExit:
         pass
     except Exception as e:  # noqa: BLE001

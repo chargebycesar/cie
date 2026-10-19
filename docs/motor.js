@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
-import { rellenarPdf } from "./relleno.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
-import { generarCie } from "./cie.js?v=El MTD declara la proteccion anadida en la tabla de dispositivos";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610191454";
+import { rellenarPdf } from "./relleno.js?v=202610191454";
+import { generarCie } from "./cie.js?v=202610191454";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];

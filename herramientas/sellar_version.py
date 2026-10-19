@@ -51,8 +51,17 @@ def sellar(ruta, sello):
     return sum(len(p.findall(nuevo)) for p in PATRONES)
 
 
-def main():
-    sello = sys.argv[1] if len(sys.argv) > 1 else datetime.now().strftime("%Y%m%d%H%M")
+def main(sello=None):
+    """El sello se recibe; si no, es la fecha y la hora.
+
+    Se pide como parametro a proposito: publicar.py llama aqui dentro, y si
+    esto leyera sys.argv se colaria de sello el argumento de publicar.py.
+    Paso el 19 oct 2026: el ?v= quedo con espacios y dejo de sellar.
+    """
+    if sello is None and len(sys.argv) > 1:
+        sello = sys.argv[1]
+    if not sello or not re.fullmatch(r"[\w.-]+", sello):
+        sello = datetime.now().strftime("%Y%m%d%H%M")
     total = 0
     for nombre in sorted(os.listdir(DOCS)):
         if not nombre.endswith((".js", ".html")):
