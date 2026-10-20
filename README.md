@@ -270,9 +270,17 @@ derivación estaría mal para el DPN de la línea.
 Sale **dibujado en el esquema unifilar**, escrito en la memoria descriptiva del
 MTD y en la información adicional del CIE, y declarado en la tabla *Datos
 técnicos dispositivos generales mando y protección* de la página 3 del MTD: la
-primera fila sigue siendo el general y el diferencial, y en la segunda se pone
-**solo el apartado del magnetotérmico** —sus polos y su intensidad, 2 × 32 o
-2 × 16— que es como lo pide el impreso. Se guarda con el botón de siempre,
+primera fila sigue siendo el general y el diferencial, y la segunda es la suya:
+
+| | Fases / Sección | Intensidad nominal | Poder de corte |
+|---|---|---|---|
+| fila 1 | 2 × 10 mm² | 2 × 40 A | 6 kA |
+| fila 2 | 2 × 10 mm² | **2 × 32 A** | 6 kA |
+
+La sección es la misma de arriba —protege ese cable, no otro— y el poder de
+corte va puesto a **6 kA**, que es lo que trae un DPN o un magnetotérmico de
+carril; el impreso lo pide y no hay dónde elegirlo. Las casillas del ICP y del
+diferencial se quedan en blanco: de eso ya responde la primera fila. Se guarda con el botón de siempre,
 **Guardar estos valores como predeterminados**, así que el caso habitual sale
 puesto desde el principio.
 

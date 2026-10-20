@@ -717,6 +717,12 @@ def rellenar_pdf(plantilla, mapa, destino, casillas=None, cfg=None, pistas=None,
 # Mapas de campos por documento
 # --------------------------------------------------------------------------
 
+# El poder de corte de lo que se anade al cuadro. Un DPN o un magnetotermico
+# de carril son de 6 kA, que es lo normal en una vivienda; el impreso pide el
+# dato y no hay donde elegirlo, asi que va puesto.
+PODER_CORTE_ANADIDA = "6"
+
+
 def mapa_mtd(datos, cfg, preset, calc):
     """Memoria Tecnica de Diseno (6 paginas). Nombres Texto### del master."""
     e = cfg["empresa"]
@@ -880,8 +886,12 @@ def mapa_mtd(datos, cfg, preset, calc):
     # arriba ya lleva el general y el diferencial.
     anadidas = protecciones_extra(preset, cfg)
     if anadidas:
+        # la seccion es la misma de arriba: protege ese cable, no otro
+        m["Texto325"] = anadidas[0]["polos"]
+        m["Texto326"] = preset["seccion"]
         m["Texto329"] = anadidas[0]["polos"]
         m["Texto330"] = anadidas[0]["intensidad"]
+        m["Texto331"] = PODER_CORTE_ANADIDA
 
     # --- pagina 6: descripcion de los trabajos ---
     for i, linea in enumerate(lineas_descripcion(datos, preset, calc, cfg), start=1590):

@@ -118,8 +118,8 @@ En **Conductor y protecciones**, la fila *Protección añadida en el cuadro*:
   línea.
 
 Sale dibujado en el esquema unifilar, escrito en el MTD y en el CIE, y puesto
-en la tabla de dispositivos de la página 3 del MTD: en la segunda fila, solo su
-calibre en el apartado del magnetotérmico. Con
+en la tabla de dispositivos de la página 3 del MTD: en la segunda fila van su
+calibre, la misma sección de arriba y 6 kA de poder de corte. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 

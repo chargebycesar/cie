@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610191454";
-import { rellenarPdf } from "./relleno.js?v=202610191454";
-import { generarCie } from "./cie.js?v=202610191454";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610201045";
+import { rellenarPdf } from "./relleno.js?v=202610201045";
+import { generarCie } from "./cie.js?v=202610201045";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -293,6 +293,11 @@ export function lineasDescripcion(datos, tec, calc, cfg) {
 
 /* ══════════════ mapas de campos ══════════════ */
 
+/* El poder de corte de lo que se añade al cuadro. Un DPN o un magnetotérmico
+   de carril son de 6 kA, que es lo normal en una vivienda; el impreso pide el
+   dato y no hay donde elegirlo, así que va puesto. */
+const PODER_CORTE_ANADIDA = "6";
+
 export function mapaMtd(datos, cfg, tec, calc) {
   const e = cfg.empresa || {};
   const f = cfg.valores_fijos_mtd || {};
@@ -437,8 +442,12 @@ export function mapaMtd(datos, cfg, tec, calc) {
   // arriba ya lleva el general y el diferencial.
   const anadida = proteccionesExtra(tec, cfg)[0];
   if (anadida) {
+    // la sección es la misma de arriba: protege ese cable, no otro
+    m.Texto325 = anadida.polos;
+    m.Texto326 = tec.seccion;
     m.Texto329 = anadida.polos;
     m.Texto330 = anadida.intensidad;
+    m.Texto331 = PODER_CORTE_ANADIDA;
   }
 
   lineasDescripcion(datos, tec, calc, cfg).forEach((linea, i) => {
