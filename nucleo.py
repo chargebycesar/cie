@@ -627,15 +627,24 @@ def _ajustar_tamano(w, texto):
     # el del formulario es automatico. Entonces el visor se lo inventa: en el
     # anexo del garaje elegia 19 puntos para recuadros de 20 y el texto salia
     # recortado. "Sin tamano" cuenta como automatico.
-    if w.text_fontsize:
-        return                      # el impreso ya dice de que tamano va
+    # El tamano que pone el impreso manda mientras el dato quepa. Si no cabe se
+    # baja lo justo, porque un nombre cortado a media palabra es peor que uno
+    # escrito mas pequeno: en la autorizacion son 12 puntos para un hueco de
+    # 223, y "ANA LOPEZ, EN REPRESENTACION DE TALLERES EL RAYO, S.L." se
+    # quedaba en "ANA LOPEZ, EN REPRESENT".
+    fijo = w.text_fontsize or 0
     # En valor absoluto: algunos recuadros vienen con el rectangulo del reves
     # y el tamano saldria en negativo, o sea el minimo. (PyMuPDF ya lo
     # normaliza, pero asi no depende de eso.)
-    ancho = max(6.0, abs(w.rect.width) - 4)
-    alto = max(6.0, abs(w.rect.height) - 2)
+    #
+    # Y en una pagina girada -la 4 del MTD va apaisada- llegan con el ancho y
+    # el alto cambiados: una casilla que se ve de 71 x 13 viene como 13 x 71.
+    # El texto corre por el lado largo, asi que se mide contra el.
+    lado, canto = abs(w.rect.width), abs(w.rect.height)
+    ancho = max(6.0, max(lado, canto) - 4)
+    alto = max(6.0, min(lado, canto) - 2)
     multi = bool(w.field_flags & 4096)          # bit 13: varias lineas
-    tam = min(TAM_MAXIMO, TAM_MAXIMO if multi else alto)
+    tam = fijo if fijo > 0 else min(TAM_MAXIMO, TAM_MAXIMO if multi else alto)
     piezas = texto.split() if multi else [texto]
     mayor = 1.0
     for pieza in piezas:
@@ -646,7 +655,10 @@ def _ajustar_tamano(w, texto):
             return
     if mayor > ancho:
         tam = tam * ancho / mayor
-    w.text_fontsize = max(TAM_MINIMO, int(tam * 10) / 10)
+    tam = max(TAM_MINIMO, int(tam * 10) / 10)
+    if fijo > 0 and tam >= fijo:
+        return                      # cabe tal como viene
+    w.text_fontsize = tam
 
 
 def _quitar_campos_vacios(doc):

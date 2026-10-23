@@ -4,7 +4,7 @@
  * el estado «Sí» en vez del habitual «Yes»; pdf-lib lo maneja bien.
  */
 
-import { mayus } from "./util.js?v=202610231226";
+import { mayus } from "./util.js?v=202610231434";
 
 const GRIS_PISTA = [0.55, 0.58, 0.62];
 
@@ -37,19 +37,28 @@ function ajustarTamano(campo, texto, helvetica, color = "0 g") {
   let da = "";
   try { da = campo.acroField.getDefaultAppearance() || ""; } catch (e) { da = ""; }
   const puesto = /([\d.]+)\s+Tf/.exec(da);
-  if (puesto && Number(puesto[1]) > 0) return;    // el impreso ya dice el tamaño
+  // El tamaño que pone el impreso manda mientras el dato quepa. Si no cabe se
+  // baja lo justo, porque un nombre cortado a media palabra es peor que uno
+  // escrito más pequeño: en la autorización son 12 puntos para un hueco de
+  // 223, y «ANA LÓPEZ, EN REPRESENTACIÓN DE TALLERES EL RAYO, S.L.» se
+  // quedaba en «ANA LÓPEZ, EN REPRESENT».
+  const fijo = puesto ? Number(puesto[1]) : 0;
   let tam;
 
   // En valor absoluto: algunos recuadros de estos impresos vienen con el
   // rectángulo del revés -el anexo del garaje trae dos con alto -20-, y el
   // tamaño salía en negativo, o sea el mínimo, y el dato en letra diminuta.
   const caja = widgets[0].getRectangle();
-  const ancho = Math.max(6, Math.abs(caja.width) - 4);
-  const alto = Math.max(6, Math.abs(caja.height) - 2);
+  // En una página girada -la 4 del MTD va apaisada- los recuadros llegan con
+  // el ancho y el alto cambiados: una casilla que se ve de 71 x 13 viene como
+  // 13 x 71. El texto corre por el lado largo, así que se mide contra él.
+  const lado = Math.abs(caja.width), canto = Math.abs(caja.height);
+  const ancho = Math.max(6, Math.max(lado, canto) - 4);
+  const alto = Math.max(6, Math.min(lado, canto) - 2);
   let multi = false;
   try { multi = campo.isMultiline(); } catch (e) { /* no todos lo dicen */ }
 
-  tam = Math.min(TAM_MAXIMO, multi ? TAM_MAXIMO : alto);
+  tam = fijo > 0 ? fijo : Math.min(TAM_MAXIMO, multi ? TAM_MAXIMO : alto);
   const piezas = multi ? texto.split(/\s+/).filter(Boolean) : [texto];
   let mayor = 1;
   for (const p of piezas) {
@@ -58,6 +67,7 @@ function ajustarTamano(campo, texto, helvetica, color = "0 g") {
   }
   if (mayor > ancho) tam = tam * ancho / mayor;
   tam = Math.max(TAM_MINIMO, Math.floor(tam * 10) / 10);
+  if (fijo > 0 && tam >= fijo) return;            // cabe tal como viene
   // El tamaño va en el recuadro, no en el campo: la librería mira primero el
   // del recuadro y solo si no lo hay baja al del campo. Puesto en el campo lo
   // ignora y se inventa uno para llenar el hueco, que es el problema de raíz.
