@@ -274,16 +274,15 @@ def nombre_del_representante(datos):
 def quien_firma(datos):
     """Quien firma la autorizacion y la declaracion del garaje.
 
-    El titular si es una persona y, si es una empresa, su representante
-    diciendo a quien representa. Lo pide asi el propio impreso, que lleva
-    escrito "o representante del titular en caso de persona juridica".
+    El titular si es una persona y, si es una empresa, su representante. Solo
+    su nombre y su NIF: el impreso ya dice de suyo "como titular/representante
+    de la instalacion", y lleva escrito "o representante del titular en caso de
+    persona juridica".
     """
     if not es_empresa(datos):
         return nombre_del_titular(datos), t(datos.get("titular_nif"))
-    razon = t(datos.get("titular_nombre"))
-    repre = nombre_del_representante(datos)
-    partes = [p for p in [repre, f"EN REPRESENTACI\u00d3N DE {razon}" if razon else ""] if p]
-    return ", ".join(partes), t(datos.get("repre_nif")) or t(datos.get("titular_nif"))
+    return (nombre_del_representante(datos),
+            t(datos.get("repre_nif")) or t(datos.get("titular_nif")))
 
 
 def direccion_una_linea(pre, datos):

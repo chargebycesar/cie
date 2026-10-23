@@ -128,7 +128,7 @@ Y ese representante sale:
 |---|---|
 | CIE | *Representante (si procede)* y su NIF, debajo de la dirección del titular |
 | Solicitud | el apartado 2 entero, el que es «obligatorio si el titular no es persona física» |
-| Autorización al instalador | firma él: «NOMBRE, EN REPRESENTACIÓN DE EMPRESA S.L.» con su NIF |
+| Autorización al instalador | firma él: su nombre y su NIF |
 | Anexo del garaje | lo mismo, que también es una declaración firmada |
 
 El MTD y el anexo ITC-BT-52 no tienen hueco para el representante: ahí va la

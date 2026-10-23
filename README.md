@@ -259,14 +259,15 @@ parte (*comunidad de propietarios*, *ayuntamiento*, *fundación*…).
 
 Entonces la pantalla deja de exigir los apellidos del titular y abre el bloque
 del representante. Y `quienFirma()` / `quien_firma()` devuelve quién firma los
-dos documentos que se firman:
+dos documentos que firma el cliente:
 
 | | Nombre | NIF |
 |---|---|---|
 | persona | el titular | el suyo |
-| empresa | `REPRESENTANTE, EN REPRESENTACIÓN DE RAZÓN SOCIAL` | el del representante |
+| empresa | el representante | el del representante |
 
-Así salen los dos: quien firma y por quién. En el CIE el representante tiene su
+Solo el nombre de quien firma: el impreso ya dice de suyo «como
+titular/representante de la instalación». En el CIE el representante tiene su
 propia línea (`F12` y `T12`, debajo de la dirección del titular) y no cuenta
 para el COMPLETADO: en el XLS oficial esa fila no tiene control, porque es un
 «si procede».

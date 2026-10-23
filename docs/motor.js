@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610231434";
-import { rellenarPdf } from "./relleno.js?v=202610231434";
-import { generarCie } from "./cie.js?v=202610231434";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610231531";
+import { rellenarPdf } from "./relleno.js?v=202610231531";
+import { generarCie } from "./cie.js?v=202610231531";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -69,19 +69,17 @@ export function nombreDelRepresentante(datos) {
     .map(t).filter(Boolean).join(" ");
 }
 
-/* Quién firma los dos documentos que se firman -la autorización al instalador
-   y la declaración del garaje-: el titular si es una persona y, si es una
-   empresa, su representante diciendo a quién representa. Lo pide así el propio
-   impreso, que lleva escrito «o representante del titular en caso de persona
-   jurídica». Así salen los dos: quien firma y por quién. */
+/* Quién firma los dos documentos que firma el cliente -la autorización al
+   instalador y la declaración del garaje-: el titular si es una persona y, si
+   es una empresa, su representante. Solo su nombre y su NIF: el impreso ya
+   dice de suyo «como titular/representante de la instalación», y lleva escrito
+   «o representante del titular en caso de persona jurídica». */
 export function quienFirma(datos) {
   if (!esEmpresa(datos)) {
     return { nombre: nombreDelTitular(datos), nif: t(datos.titular_nif) };
   }
-  const razon = t(datos.titular_nombre);
-  const repre = nombreDelRepresentante(datos);
   return {
-    nombre: [repre, razon && `EN REPRESENTACIÓN DE ${razon}`].filter(Boolean).join(", "),
+    nombre: nombreDelRepresentante(datos),
     nif: t(datos.repre_nif) || t(datos.titular_nif),
   };
 }
