@@ -51,7 +51,8 @@ volver a empezar.
 
 ## Cómo se usa
 
-1. **Titular**: NIF, nombre, apellidos y dirección.
+1. **Titular**: NIF, nombre, apellidos y dirección. Si es una empresa, no
+   escribes apellidos y aparece el bloque del **representante legal**.
 2. **Emplazamiento**: si el punto está en la misma dirección, deja la casilla
    marcada y no escribes nada. Añade plaza y planta.
 3. **Instalación**: elige **6 mm²** o **10 mm²**, el esquema, la potencia y los
@@ -105,6 +106,38 @@ del impreso.
 La **plaza y la planta** se escriben en los cuatro sitios donde hacen falta: el
 emplazamiento del MTD, la dirección del punto de suministro del CIE, el
 emplazamiento de la autorización y la memoria descriptiva.
+
+---
+
+## Si el titular es una empresa
+
+Una empresa no tiene apellidos —su nombre es la razón social— y no firma sola:
+firma su **representante legal**.
+
+La pantalla lo detecta sola, por el NIF —un CIF empieza por letra— o, mientras
+no esté escrito, por el nombre: *S.L.*, *S.A.*, *C.B.*, *comunidad de
+propietarios*… Entonces:
+
+- deja de pedir los apellidos del titular;
+- abre el bloque del **representante legal**, donde van su NIF, su nombre y
+  sus apellidos.
+
+Y ese representante sale:
+
+| Dónde | Qué pone |
+|---|---|
+| CIE | *Representante (si procede)* y su NIF, debajo de la dirección del titular |
+| Solicitud | el apartado 2 entero, el que es «obligatorio si el titular no es persona física» |
+| Autorización al instalador | firma él: «NOMBRE, EN REPRESENTACIÓN DE EMPRESA S.L.» con su NIF |
+| Anexo del garaje | lo mismo, que también es una declaración firmada |
+
+El MTD y el anexo ITC-BT-52 no tienen hueco para el representante: ahí va la
+empresa, con su CIF en el NIF y la razón social en *Nombre/Razón Social*.
+
+Si falta el representante, la pantalla lo avisa al generar.
+
+El bloque también se queda abierto si lo rellenas a mano con un titular que es
+persona física: a veces firma otro por él.
 
 ---
 

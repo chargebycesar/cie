@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610201045";
-import { rellenarPdf } from "./relleno.js?v=202610201045";
-import { generarCie } from "./cie.js?v=202610201045";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610231226";
+import { rellenarPdf } from "./relleno.js?v=202610231226";
+import { generarCie } from "./cie.js?v=202610231226";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -33,6 +33,57 @@ export function nombreCarpeta(datos) {
 export function nombreDelTitular(datos) {
   return [datos.titular_nombre, datos.titular_apellido1, datos.titular_apellido2]
     .map(t).filter(Boolean).join(" ");
+}
+
+/* ══════════════ cuando el titular es una empresa ══════════════
+
+   Una empresa no tiene apellidos -su nombre es la razón social- y no firma
+   sola: firma su representante legal. El CIE le reserva una línea debajo de la
+   dirección del titular, «Representante (si procede)», y la solicitud un
+   apartado entero, el 2, «obligatorio si el titular no es persona física».
+
+   Quién es empresa lo dice el NIF, que es lo fiable: un CIF empieza por letra
+   y estas son las de persona jurídica. Las K, L y M se quedan fuera a
+   propósito: son de persona física -menores, residentes fuera y extranjeros
+   sin NIE-. */
+const LETRAS_EMPRESA = "ABCDEFGHJNPQRSUVW";
+
+/* Y mientras el NIF no esté escrito, lo delata el nombre: la forma de
+   sociedad al final, o el tipo de entidad en cualquier parte. */
+const FORMA_SOCIETARIA =
+  /(^|[\s,.])(S\.?A\.?U?|S\.?L\.?U?|S\.?L\.?N\.?E|S\.?L\.?L|S\.?C\.?P|S\.?COOP|C\.?B|A\.?I\.?E|U\.?T\.?E)\.?$/i;
+const ENTIDAD =
+  /\b(COMUNIDAD DE (PROPIETARIOS|VECINOS)|AYUNTAMIENTO|ASOCIACI[OÓ]N|FUNDACI[OÓ]N|COOPERATIVA)\b/i;
+
+export function esEmpresa(datos) {
+  const nif = t(datos.titular_nif).replace(/[\s.-]/g, "").toUpperCase();
+  // un DNI o un NIE zanjan la cuestión: es una persona
+  if (/^\d{8}[A-Z]$/.test(nif) || /^[XYZ]\d{7}[A-Z]$/.test(nif)) return false;
+  if (/^[A-Z]\d{7}[0-9A-Z]$/.test(nif)) return LETRAS_EMPRESA.includes(nif[0]);
+  const nombre = t(datos.titular_nombre);
+  return FORMA_SOCIETARIA.test(nombre) || ENTIDAD.test(nombre);
+}
+
+export function nombreDelRepresentante(datos) {
+  return [datos.repre_nombre, datos.repre_apellido1, datos.repre_apellido2]
+    .map(t).filter(Boolean).join(" ");
+}
+
+/* Quién firma los dos documentos que se firman -la autorización al instalador
+   y la declaración del garaje-: el titular si es una persona y, si es una
+   empresa, su representante diciendo a quién representa. Lo pide así el propio
+   impreso, que lleva escrito «o representante del titular en caso de persona
+   jurídica». Así salen los dos: quien firma y por quién. */
+export function quienFirma(datos) {
+  if (!esEmpresa(datos)) {
+    return { nombre: nombreDelTitular(datos), nif: t(datos.titular_nif) };
+  }
+  const razon = t(datos.titular_nombre);
+  const repre = nombreDelRepresentante(datos);
+  return {
+    nombre: [repre, razon && `EN REPRESENTACIÓN DE ${razon}`].filter(Boolean).join(", "),
+    nif: t(datos.repre_nif) || t(datos.titular_nif),
+  };
 }
 
 export function direccionUnaLinea(pre, datos) {
@@ -539,11 +590,11 @@ export const PISTAS_ANEXO_GARAJE = {
 
 export function mapaAnexoGaraje(datos, cfg) {
   const { dia, mes, anio } = partesFecha(datos.fecha);
-  const nombre = nombreDelTitular(datos);
+  const firma = quienFirma(datos);
   return {
     mapa: {
-      "nombre titular": nombre,
-      Texto2: t(datos.titular_nif),
+      "nombre titular": firma.nombre,
+      Texto2: firma.nif,
       "domicilop titular": direccionUnaLinea("titular", datos),
       "nº plaza": t(datos.plaza_numero),
       "planta plaza": t(datos.plaza_planta),
@@ -603,11 +654,11 @@ export function mapaUnifilar(datos, cfg, tec, calc) {
 
 export function mapaAutorizacion(datos, cfg) {
   const e = cfg.empresa || {};
-  const nombre = nombreDelTitular(datos);
+  const firma = quienFirma(datos);
   return {
     mapa: {
-      Auto_Text1: nombre,
-      Auto_Text2: t(datos.titular_nif),
+      Auto_Text1: firma.nombre,
+      Auto_Text2: firma.nif,
       Auto_Text3: e.instalador_nombre,
       Auto_Text4: e.instalador_nif,
       Auto_Text5: direccionUnaLinea("empl", datos),
@@ -658,6 +709,12 @@ export function mapaSolicitud(datos, cfg) {
     titular_cp: t(datos.titular_cp),
     titular_movil: t(datos.titular_movil),
     titular_fijo: t(datos.titular_fijo),
+    // 2 · representante del titular, obligatorio si no es persona física
+    repre_nif: t(datos.repre_nif),
+    repre_ap1: t(datos.repre_apellido1),
+    repre_ap2: t(datos.repre_apellido2),
+    repre_nombre: t(datos.repre_nombre),
+    repre_email: t(datos.repre_email),
     // 3 · empresa instaladora
     empresa_nif: e.nif,
     empresa_nombre: e.razon_social,
@@ -718,6 +775,8 @@ export function celdasCie(datos, cfg, tec, calc) {
     H10: t(datos.titular_piso), J10: t(datos.titular_puerta), M10: t(datos.titular_localidad),
     C11: t(datos.titular_provincia) || "MADRID", I11: t(datos.titular_cp),
     M11: t(datos.titular_fijo), S11: t(datos.titular_movil),
+    // «Representante (si procede)», justo debajo de la dirección del titular
+    F12: nombreDelRepresentante(datos), T12: t(datos.repre_nif),
     C16: t(datos.empl_tipo_via), G16: t(datos.empl_nombre_via),
     S16: t(datos.empl_numero), U16: t(datos.empl_cp),
     C17: t(datos.empl_bloque), F17: t(datos.empl_escalera),
@@ -930,6 +989,15 @@ export async function generarExpediente(datos, cfg, cargarPlantilla, lib, opcion
   }
   if (validarNif(datos.titular_nif) === false) {
     avisos.push("El NIF del titular no pasa la comprobación de la letra de control.");
+  }
+  if (validarNif(datos.repre_nif) === false) {
+    avisos.push("El NIF del representante no pasa la comprobación de la letra de control.");
+  }
+  if (esEmpresa(datos) && !(nombreDelRepresentante(datos) && t(datos.repre_nif))) {
+    avisos.push("El titular es una empresa, así que hace falta su representante legal "
+      + "con nombre y NIF: es quien firma por ella. Va en el CIE, debajo de la "
+      + "dirección del titular, en el apartado 2 de la solicitud y en los dos "
+      + "documentos que se firman.");
   }
   if (calc.potencia_kw > calc.pot_max_admisible + 0.01) {
     avisos.push(`El punto pide ${coma(calc.potencia_kw)} kW pero las protecciones de `

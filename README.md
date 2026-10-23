@@ -239,6 +239,38 @@ cada impreso, dibuja cada página a imagen y apunta de cada campo dónde está y
 qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena la
 aplicación. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
+### Cuando el titular es una empresa
+
+Una empresa no tiene apellidos y no firma sola. El impreso de la autorización
+lo dice con todas las letras —«o representante del titular en caso de persona
+jurídica»— y la solicitud reserva su apartado 2 para él, «obligatorio si el
+titular no es persona física».
+
+Quién es empresa lo decide `esEmpresa()` / `es_empresa()`, y lo decide el NIF,
+que es lo fiable: un CIF es letra + 7 dígitos + control, y las letras de
+persona jurídica son `ABCDEFGHJNPQRSUVW`. Las **K, L y M se quedan fuera a
+propósito**: son de persona física —menores, residentes fuera y extranjeros sin
+NIE—. Un DNI o un NIE zanjan la cuestión en sentido contrario, aunque el nombre
+parezca de empresa.
+
+Mientras el NIF no esté escrito, decide el nombre: la forma de sociedad al
+final (*S.L.*, *S.A.U.*, *C.B.*, *S.COOP*…) o el tipo de entidad en cualquier
+parte (*comunidad de propietarios*, *ayuntamiento*, *fundación*…).
+
+Entonces la pantalla deja de exigir los apellidos del titular y abre el bloque
+del representante. Y `quienFirma()` / `quien_firma()` devuelve quién firma los
+dos documentos que se firman:
+
+| | Nombre | NIF |
+|---|---|---|
+| persona | el titular | el suyo |
+| empresa | `REPRESENTANTE, EN REPRESENTACIÓN DE RAZÓN SOCIAL` | el del representante |
+
+Así salen los dos: quien firma y por quién. En el CIE el representante tiene su
+propia línea (`F12` y `T12`, debajo de la dirección del titular) y no cuenta
+para el COMPLETADO: en el XLS oficial esa fila no tiene control, porque es un
+«si procede».
+
 ### El esquema unifilar
 
 Se rellena solo, con la línea que has configurado: número de conductores,

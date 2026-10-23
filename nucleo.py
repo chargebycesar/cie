@@ -228,6 +228,64 @@ def nombre_del_titular(datos):
     return " ".join(p for p in partes if p)
 
 
+# --------------------------------------------------------------------------
+# Cuando el titular es una empresa
+# --------------------------------------------------------------------------
+
+# Una empresa no tiene apellidos -su nombre es la razon social- y no firma
+# sola: firma su representante legal. El CIE le reserva una linea debajo de la
+# direccion del titular, "Representante (si procede)", y la solicitud un
+# apartado entero, el 2, "obligatorio si el titular no es persona fisica".
+#
+# Quien es empresa lo dice el NIF, que es lo fiable: un CIF empieza por letra y
+# estas son las de persona juridica. Las K, L y M se quedan fuera a proposito:
+# son de persona fisica -menores, residentes fuera y extranjeros sin NIE-.
+LETRAS_EMPRESA = "ABCDEFGHJNPQRSUVW"
+
+# Y mientras el NIF no este escrito, lo delata el nombre: la forma de sociedad
+# al final, o el tipo de entidad en cualquier parte.
+FORMA_SOCIETARIA = re.compile(
+    r"(^|[\s,.])(S\.?A\.?U?|S\.?L\.?U?|S\.?L\.?N\.?E|S\.?L\.?L|S\.?C\.?P"
+    r"|S\.?COOP|C\.?B|A\.?I\.?E|U\.?T\.?E)\.?$", re.IGNORECASE)
+ENTIDAD = re.compile(
+    r"\b(COMUNIDAD DE (PROPIETARIOS|VECINOS)|AYUNTAMIENTO|ASOCIACI[O\u00d3]N"
+    r"|FUNDACI[O\u00d3]N|COOPERATIVA)\b", re.IGNORECASE)
+
+
+def es_empresa(datos):
+    """True si el titular es una persona juridica."""
+    nif = re.sub(r"[\s.-]", "", t(datos.get("titular_nif"))).upper()
+    # un DNI o un NIE zanjan la cuestion: es una persona
+    if re.fullmatch(r"\d{8}[A-Z]", nif) or re.fullmatch(r"[XYZ]\d{7}[A-Z]", nif):
+        return False
+    if re.fullmatch(r"[A-Z]\d{7}[0-9A-Z]", nif):
+        return nif[0] in LETRAS_EMPRESA
+    nombre = t(datos.get("titular_nombre"))
+    return bool(FORMA_SOCIETARIA.search(nombre) or ENTIDAD.search(nombre))
+
+
+def nombre_del_representante(datos):
+    """El representante legal, como se lee: nombre y luego los dos apellidos."""
+    partes = [t(datos.get("repre_nombre")), t(datos.get("repre_apellido1")),
+              t(datos.get("repre_apellido2"))]
+    return " ".join(p for p in partes if p)
+
+
+def quien_firma(datos):
+    """Quien firma la autorizacion y la declaracion del garaje.
+
+    El titular si es una persona y, si es una empresa, su representante
+    diciendo a quien representa. Lo pide asi el propio impreso, que lleva
+    escrito "o representante del titular en caso de persona juridica".
+    """
+    if not es_empresa(datos):
+        return nombre_del_titular(datos), t(datos.get("titular_nif"))
+    razon = t(datos.get("titular_nombre"))
+    repre = nombre_del_representante(datos)
+    partes = [p for p in [repre, f"EN REPRESENTACI\u00d3N DE {razon}" if razon else ""] if p]
+    return ", ".join(partes), t(datos.get("repre_nif")) or t(datos.get("titular_nif"))
+
+
 def direccion_una_linea(pre, datos):
     """Monta 'CALLE MAYOR 2 3 IZQ' a partir de los campos sueltos."""
     piezas = [t(datos.get(pre + "_tipo_via")), t(datos.get(pre + "_nombre_via")),
@@ -1094,10 +1152,10 @@ PISTAS_ANEXO_GARAJE = {
 def mapa_anexo_garaje(datos, cfg):
     """Declaracion sobre inspeccion periodica del garaje (Acta XII GTREBT)."""
     dia, mes, anio, _ = partes_fecha(datos.get("fecha"))
-    nombre = nombre_del_titular(datos)
+    nombre, nif = quien_firma(datos)
     m = {
         "nombre titular": nombre,
-        "Texto2": t(datos.get("titular_nif")),
+        "Texto2": nif,
         "domicilop titular": direccion_una_linea("titular", datos),
         "nº plaza": t(datos.get("plaza_numero")),
         "planta plaza": t(datos.get("plaza_planta")),
@@ -1158,10 +1216,10 @@ def mapa_unifilar(datos, cfg, preset, calc):
 def mapa_autorizacion(datos, cfg):
     """Autorizacion del titular al instalador para gestionar el expediente."""
     e = cfg["empresa"]
-    nombre = nombre_del_titular(datos)
+    nombre, nif = quien_firma(datos)
     m = {
         "Auto_Text1": nombre,
-        "Auto_Text2": t(datos.get("titular_nif")),
+        "Auto_Text2": nif,
         "Auto_Text3": e["instalador_nombre"],
         "Auto_Text4": e["instalador_nif"],
         "Auto_Text5": direccion_una_linea("empl", datos),
@@ -1213,6 +1271,12 @@ def mapa_solicitud(datos, cfg):
         "titular_cp": t(datos.get("titular_cp")),
         "titular_movil": t(datos.get("titular_movil")),
         "titular_fijo": t(datos.get("titular_fijo")),
+        # 2 - representante del titular, obligatorio si no es persona fisica
+        "repre_nif": t(datos.get("repre_nif")),
+        "repre_ap1": t(datos.get("repre_apellido1")),
+        "repre_ap2": t(datos.get("repre_apellido2")),
+        "repre_nombre": t(datos.get("repre_nombre")),
+        "repre_email": t(datos.get("repre_email")),
         # 3 - empresa instaladora
         "empresa_nif": e["nif"],
         "empresa_nombre": e["razon_social"],
@@ -1288,6 +1352,9 @@ def celdas_cie(datos, cfg, preset, calc):
         "I11": t(datos.get("titular_cp")),
         "M11": t(datos.get("titular_fijo")),
         "S11": t(datos.get("titular_movil")),
+        # "Representante (si procede)", debajo de la direccion del titular
+        "F12": nombre_del_representante(datos),
+        "T12": t(datos.get("repre_nif")),
 
         # --- emplazamiento ---
         "C16": t(datos.get("empl_tipo_via")),
@@ -1661,6 +1728,19 @@ def generar(datos, aplanar_mtd=True):
     if validar_nif(datos.get("titular_nif")) is False:
         resultado["avisos"].append(
             "El NIF del titular no pasa la comprobacion de la letra de control.")
+
+    if validar_nif(datos.get("repre_nif")) is False:
+        resultado["avisos"].append(
+            "El NIF del representante no pasa la comprobacion de la letra de "
+            "control.")
+
+    if es_empresa(datos) and not (nombre_del_representante(datos)
+                                  and t(datos.get("repre_nif"))):
+        resultado["avisos"].append(
+            "El titular es una empresa, asi que hace falta su representante "
+            "legal con nombre y NIF: es quien firma por ella. Va en el CIE, "
+            "debajo de la direccion del titular, en el apartado 2 de la "
+            "solicitud y en los dos documentos que se firman.")
 
     # El cargador no puede pedir mas de lo que dejan pasar las protecciones.
     if calc["potencia_kw"] > calc["pot_max_admisible"] + 0.01:

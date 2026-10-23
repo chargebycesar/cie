@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boletines IRVE · Comunidad de Madrid</title>
-<link rel="stylesheet" href="estilos.css?v=202610201045">
+<link rel="stylesheet" href="estilos.css?v=202610231226">
 </head>
 <body>
 
@@ -72,7 +72,7 @@
       <div class="rejilla">
         <label class="c3">NIF / CIF <span class="obl">*</span>
           <input name="titular_nif" required placeholder="12345678Z"></label>
-        <label class="c3">Primer apellido <span class="obl">*</span>
+        <label class="c3">Primer apellido <span class="obl" id="obl-apellido1">*</span>
           <input name="titular_apellido1" required></label>
         <label class="c3">Segundo apellido
           <input name="titular_apellido2"></label>
@@ -107,6 +107,27 @@
 
         <label class="c3">Plaza de garaje nº <input name="plaza_numero"></label>
         <label class="c3">Planta <input name="plaza_planta" placeholder="-1"></label>
+      </div>
+
+      <!-- Sale solo cuando el titular es una empresa, que ni tiene apellidos
+           ni firma sola: firma su representante legal. -->
+      <div class="rejilla separa" id="bloque-representante" hidden>
+        <p class="pista ancho">
+          <strong>El titular es una empresa.</strong> No tiene apellidos —su
+          nombre es la razón social— y no firma sola: escribe aquí su
+          representante legal. Sale en el CIE debajo de la dirección del
+          titular, en el apartado 2 de la solicitud y en los dos documentos
+          que se firman.
+        </p>
+        <label class="c3">NIF del representante <span class="obl">*</span>
+          <input name="repre_nif" placeholder="12345678Z"></label>
+        <label class="c3">Primer apellido <span class="obl">*</span>
+          <input name="repre_apellido1"></label>
+        <label class="c3">Segundo apellido <input name="repre_apellido2"></label>
+        <label class="c3">Nombre <span class="obl">*</span>
+          <input name="repre_nombre"></label>
+        <label class="c6">Correo electrónico
+          <input name="repre_email" type="email"></label>
       </div>
 
       <label class="casilla ancho separa">
@@ -364,6 +385,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202610201045"></script>
+<script type="module" src="app.js?v=202610231226"></script>
 </body>
 </html>

@@ -7,11 +7,11 @@
 
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
-         mapaAnexoGaraje, celdasCie, validarCups,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610201045"
-import { identificador, estado } from "./cie.js?v=202610201045"
+         mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610231226"
+import { identificador, estado } from "./cie.js?v=202610231226"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202610201045";
+         normalizar } from "./cp.js?v=202610231226";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -69,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202610201045")).json();
+    CFG = await (await fetch("config-inicial.json?v=202610231226")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -98,6 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   pintarExpedientes();
   ponerFechaHoy();
   restaurarBorrador();
+  ajustarRepresentante();
   recalcular();
 
   // Se traen los impresos por adelantado para que generar sea instantáneo
@@ -371,6 +372,24 @@ function aprenderCodigosPostales() {
 $("#mismo_domicilio").addEventListener("change", e => {
   $("#bloque-emplazamiento").hidden = e.target.checked;
 });
+/* Una empresa no tiene apellidos y no firma sola: firma su representante
+   legal. En cuanto el NIF o el nombre la delatan se abre su bloque, se dejan
+   de pedir los apellidos del titular y se piden los del representante.
+
+   El bloque tampoco se cierra si ya hay algo escrito: un representante puesto
+   a mano -una persona que actúa por otra- no se esconde porque el NIF diga
+   que el titular es una persona. */
+const CAMPOS_REPRESENTANTE = ["repre_nif", "repre_apellido1", "repre_nombre"];
+
+function ajustarRepresentante() {
+  const empresa = esEmpresa(datosFormulario());
+  const escrito = CAMPOS_REPRESENTANTE.some(n => (form.elements[n].value || "").trim());
+  $("#bloque-representante").hidden = !empresa && !escrito;
+  form.elements.titular_apellido1.required = !empresa;
+  $("#obl-apellido1").hidden = empresa;
+  CAMPOS_REPRESENTANTE.forEach(n => { form.elements[n].required = empresa; });
+}
+
 $("#incluir_anexo_garaje").addEventListener("change", e => {
   $("#bloque-cp").hidden = !e.target.checked;
   $("#pista-cp").hidden = !e.target.checked;
@@ -405,6 +424,7 @@ function recalcular() {
 form.addEventListener("input", e => {
   recalcular();
   if (e.target.name === "cups") ponerDistribuidora();
+  if (/^titular_(nif|nombre)$|^repre_/.test(e.target.name || "")) ajustarRepresentante();
   guardarBorrador();
 });
 
@@ -456,6 +476,7 @@ function cargarDatos(d, avisar = true) {
   $("#mismo_domicilio").checked = mismo;
   $("#bloque-emplazamiento").hidden = mismo;
   ponerDistribuidora();
+  ajustarRepresentante();
   recalcular();
   if (avisar) { $$(".pestana")[0].click(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 }
@@ -986,7 +1007,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610201045")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610231226")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1008,7 +1029,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610201045")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610231226")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;

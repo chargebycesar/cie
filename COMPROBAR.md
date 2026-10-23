@@ -13,10 +13,10 @@ npm install
 npm run comprobar
 ```
 
-Pasa el motor por dieciocho situaciones incómodas: formulario vacío, sin CUPS,
+Pasa el motor por veintiuna situaciones incómodas: formulario vacío, sin CUPS,
 NIF mal, longitud cero, trifásico a 400 V, aluminio, potencia mayor que la
-protección, texto con emojis o comillas tipográficas, observaciones larguísimas
-y configuración sin datos de empresa.
+protección, texto con emojis o comillas tipográficas, observaciones larguísimas,
+titular empresa con representante y sin él, y configuración sin datos de empresa.
 
 **Ninguna debe romper.** Si alguna sale como ROMPE o FALLO, hay trabajo.
 

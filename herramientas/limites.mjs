@@ -7,7 +7,16 @@ import * as lib from 'pdf-lib';
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DOCS = path.join(RAIZ, 'docs');
 const motor = await import(pathToFileURL(path.join(DOCS, 'motor.js')).href);
-const cfgBase = JSON.parse(fs.readFileSync(path.join(RAIZ, 'config.json'), 'utf8'));
+// Como en el navegador: la de fábrica debajo y la del usuario encima, para
+// que una configuración de antes reciba igual lo que se haya añadido después.
+const fabrica = JSON.parse(fs.readFileSync(path.join(DOCS, 'config-inicial.json'), 'utf8'));
+const suya = JSON.parse(fs.readFileSync(path.join(RAIZ, 'config.json'), 'utf8'));
+const cfgBase = { ...fabrica, ...suya };
+for (const [clave, valor] of Object.entries(fabrica)) {
+  if (valor && valor.constructor === Object && suya[clave] && suya[clave].constructor === Object) {
+    cfgBase[clave] = { ...valor, ...suya[clave] };
+  }
+}
 
 const cargar = async (n, como) => {
   const p = path.join(DOCS, 'plantillas', n);
@@ -38,6 +47,19 @@ const casos = {
     observaciones: 'Linea de prueba muy larga. '.repeat(60) },
   'valor larguísimo en un campo corto': { ...base,
     plaza_numero: '1234567890123456789012345678901234567890' },
+  // Una empresa no tiene apellidos y firma por ella su representante legal
+  'titular empresa con representante': { ...base,
+    titular_nif: 'B00000000', titular_nombre: 'TALLERES EL RAYO, S.L.',
+    titular_apellido1: '', titular_apellido2: '',
+    repre_nif: '12345678Z', repre_nombre: 'ANA',
+    repre_apellido1: 'LOPEZ', repre_apellido2: 'MARTIN',
+    repre_email: 'prueba@ejemplo.es', incluir_anexo_garaje: true },
+  'titular empresa sin representante': { ...base,
+    titular_nif: 'B00000000', titular_nombre: 'TALLERES EL RAYO, S.L.',
+    titular_apellido1: '', titular_apellido2: '' },
+  'empresa por el nombre, sin NIF': { ...base,
+    titular_nif: '', titular_nombre: 'COMUNIDAD DE PROPIETARIOS RÍO 10',
+    titular_apellido1: '', titular_apellido2: '' },
   'config sin empresa': { ...base, __sinEmpresa: true },
 };
 
