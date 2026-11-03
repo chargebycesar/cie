@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boletines IRVE · Comunidad de Madrid</title>
-<link rel="stylesheet" href="estilos.css?v=202610231531">
+<link rel="stylesheet" href="estilos.css?v=202611031141">
 </head>
 <body>
 
@@ -284,11 +284,16 @@
         <label class="c6">Nombre de la comunidad <input name="cp_nombre"></label>
         <label class="c3">CIF <input name="cp_nif"></label>
         <label class="c9">Domicilio <input name="cp_domicilio"></label>
+        <p class="pista ancho">
+          La localidad, el código postal y la provincia se ponen solos con los
+          de la dirección de la instalación, que es donde está el garaje.
+          Cámbialos aquí si en algún caso no coinciden.
+        </p>
         <label class="c6">Localidad
           <input name="cp_localidad" list="lista-localidades"></label>
         <label class="c3">C.P. <input name="cp_cp" list="cps-cp"></label>
         <datalist id="cps-cp"></datalist>
-        <label class="c3">Provincia <input name="cp_provincia" value="MADRID"></label>
+        <label class="c3">Provincia <input name="cp_provincia"></label>
       </div>
     </fieldset>
 
@@ -385,6 +390,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202610231531"></script>
+<script type="module" src="app.js?v=202611031141"></script>
 </body>
 </html>

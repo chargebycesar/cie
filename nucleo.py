@@ -1152,9 +1152,6 @@ PISTAS_ANEXO_GARAJE = {
     "titular garaje": "Escriba aquí el nombre de la comunidad de propietarios",
     "NIF titular garaje": "CIF de la comunidad",
     "domicilio titular garaje": "Domicilio de la comunidad",
-    "localidad tit. garaje": "Localidad",
-    "C.P. titular garaje": "C.P.",
-    "provincia tit. garaje": "Provincia",
     "nº plaza": "Nº de plaza",
     "planta plaza": "Planta",
 }
@@ -1177,9 +1174,14 @@ def mapa_anexo_garaje(datos, cfg):
         "titular garaje": t(datos.get("cp_nombre")),
         "NIF titular garaje": t(datos.get("cp_nif")),
         "domicilio titular garaje": t(datos.get("cp_domicilio")),
-        "localidad tit. garaje": t(datos.get("cp_localidad")),
-        "C.P. titular garaje": t(datos.get("cp_cp")),
-        "provincia tit. garaje": t(datos.get("cp_provincia")) or "MADRID",
+        # El garaje esta donde esta la instalacion, asi que la comunidad que
+        # lo tiene es de ese mismo municipio: si no se ha escrito otra cosa,
+        # se pone la del emplazamiento.
+        "localidad tit. garaje": (t(datos.get("cp_localidad"))
+                                  or t(datos.get("empl_localidad"))),
+        "C.P. titular garaje": t(datos.get("cp_cp")) or t(datos.get("empl_cp")),
+        "provincia tit. garaje": (t(datos.get("cp_provincia"))
+                                  or t(datos.get("empl_provincia")) or "MADRID"),
         # El "En ______, a __ de ____" de la firma. Va la localidad del
         # cliente, no la provincia: ese recuadro compartia campo con la
         # provincia del garaje y por eso ponia MADRID.

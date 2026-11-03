@@ -459,6 +459,19 @@ impreso:
   fuentes. Sin él los campos se quedan mudos. Y en algunos impresos está escrito
   dentro del catálogo en vez de apuntar a un objeto aparte.
 
+### La comunidad es del municipio de la instalación
+
+El garaje está donde está la instalación, así que la comunidad de propietarios
+que lo tiene es de ese mismo municipio. En el anexo del garaje, la localidad,
+el código postal y la provincia de la comunidad salen de `empl_*` cuando no se
+ha escrito nada en `cp_*`, en los dos motores, y por eso han dejado de llevar
+leyenda gris: ya van puestos.
+
+En la pantalla se copian además a la vista, para poder cambiarlos. Cada uno
+deja de copiarse en cuanto se escribe a mano —`dataset.tocado`—, así que se
+puede corregir uno sin que los otros dos se queden atrás. Al abrir un
+expediente guardado, lo que venga escrito manda.
+
 ### Las leyendas grises no tiñen lo que escribe el cliente
 
 En el anexo del garaje hay huecos que rellena el cliente, y salen con una

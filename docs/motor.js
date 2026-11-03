@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202610231531";
-import { rellenarPdf } from "./relleno.js?v=202610231531";
-import { generarCie } from "./cie.js?v=202610231531";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202611031141";
+import { rellenarPdf } from "./relleno.js?v=202611031141";
+import { generarCie } from "./cie.js?v=202611031141";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -579,9 +579,6 @@ export const PISTAS_ANEXO_GARAJE = {
   "titular garaje": "Escriba aquí el nombre de la comunidad de propietarios",
   "NIF titular garaje": "CIF de la comunidad",
   "domicilio titular garaje": "Domicilio de la comunidad",
-  "localidad tit. garaje": "Localidad",
-  "C.P. titular garaje": "C.P.",
-  "provincia tit. garaje": "Provincia",
   "nº plaza": "Nº de plaza",
   "planta plaza": "Planta",
 };
@@ -603,9 +600,13 @@ export function mapaAnexoGaraje(datos, cfg) {
       "titular garaje": t(datos.cp_nombre),
       "NIF titular garaje": t(datos.cp_nif),
       "domicilio titular garaje": t(datos.cp_domicilio),
-      "localidad tit. garaje": t(datos.cp_localidad),
-      "C.P. titular garaje": t(datos.cp_cp),
-      "provincia tit. garaje": t(datos.cp_provincia) || "MADRID",
+      // El garaje está donde está la instalación, así que la comunidad que
+      // lo tiene es de ese mismo municipio: si no se ha escrito otra cosa, se
+      // pone la del emplazamiento.
+      "localidad tit. garaje": t(datos.cp_localidad) || t(datos.empl_localidad),
+      "C.P. titular garaje": t(datos.cp_cp) || t(datos.empl_cp),
+      "provincia tit. garaje": t(datos.cp_provincia) || t(datos.empl_provincia)
+        || "MADRID",
       // El "En ______, a __ de ____" de la firma. Va la localidad del
       // cliente, no la provincia: ese recuadro compartia campo con la
       // provincia del garaje y por eso ponia MADRID.

@@ -228,6 +228,13 @@ genera igual**: el anexo sale con los datos del cliente y de la instalación ya
 puestos, y en los huecos que faltan aparece **en gris lo que hay que escribir
 ahí**, para que el cliente lo complete desde el PDF en su casa.
 
+De la comunidad solo quedan en gris el nombre, el CIF y el domicilio. **La
+localidad, el código postal y la provincia se ponen solos** con los de la
+dirección de la instalación: el garaje está ahí, así que la comunidad que lo
+tiene es de ese mismo municipio. Salen escritos en el formulario y puedes
+cambiarlos a mano en ese mismo apartado; desde que los tocas, dejan de
+seguir a la dirección.
+
 Avísale de que borre el texto gris al escribir encima. Si no lo borra, se imprime
 tal cual. La aplicación te lo recuerda al generar.
 

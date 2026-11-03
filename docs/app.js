@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202610231531"
-import { identificador, estado } from "./cie.js?v=202610231531"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611031141"
+import { identificador, estado } from "./cie.js?v=202611031141"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202610231531";
+         normalizar } from "./cp.js?v=202611031141";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -69,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202610231531")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611031141")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -99,6 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   ponerFechaHoy();
   restaurarBorrador();
   ajustarRepresentante();
+  copiarDireccionALaComunidad();
   recalcular();
 
   // Se traen los impresos por adelantado para que generar sea instantáneo
@@ -390,9 +391,28 @@ function ajustarRepresentante() {
   CAMPOS_REPRESENTANTE.forEach(n => { form.elements[n].required = empresa; });
 }
 
+/* El garaje está donde está la instalación, así que la comunidad que lo tiene
+   es de ese mismo municipio. Estos tres se copian de la dirección de la
+   instalación -que a su vez puede ser la del titular, si está marcada la
+   casilla- y se dejan de copiar en cuanto se escriben a mano, por si alguna
+   vez no coinciden. */
+const COMUNIDAD_COPIA = {
+  cp_localidad: "empl_localidad", cp_cp: "empl_cp", cp_provincia: "empl_provincia",
+};
+
+function copiarDireccionALaComunidad() {
+  const d = datosFormulario();
+  for (const [suyo, deDonde] of Object.entries(COMUNIDAD_COPIA)) {
+    const campo = form.elements[suyo];
+    if (campo.dataset.tocado) continue;
+    campo.value = d[deDonde] || "";
+  }
+}
+
 $("#incluir_anexo_garaje").addEventListener("change", e => {
   $("#bloque-cp").hidden = !e.target.checked;
   $("#pista-cp").hidden = !e.target.checked;
+  if (e.target.checked) copiarDireccionALaComunidad();
 });
 
 /* ══════════════ cálculo en vivo ══════════════ */
@@ -425,6 +445,10 @@ form.addEventListener("input", e => {
   recalcular();
   if (e.target.name === "cups") ponerDistribuidora();
   if (/^titular_(nif|nombre)$|^repre_/.test(e.target.name || "")) ajustarRepresentante();
+  if (e.target.name in COMUNIDAD_COPIA) e.target.dataset.tocado = "1";
+  else if (/^(empl|titular)_(localidad|cp|provincia)$/.test(e.target.name || "")) {
+    copiarDireccionALaComunidad();
+  }
   guardarBorrador();
 });
 
@@ -477,6 +501,12 @@ function cargarDatos(d, avisar = true) {
   $("#bloque-emplazamiento").hidden = mismo;
   ponerDistribuidora();
   ajustarRepresentante();
+  // Lo que venga guardado manda: si trae algo escrito, no se pisa.
+  for (const suyo of Object.keys(COMUNIDAD_COPIA)) {
+    if (String(d[suyo] ?? "").trim()) form.elements[suyo].dataset.tocado = "1";
+    else delete form.elements[suyo].dataset.tocado;
+  }
+  copiarDireccionALaComunidad();
   recalcular();
   if (avisar) { $$(".pestana")[0].click(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 }
@@ -1007,7 +1037,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202610231531")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611031141")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1029,7 +1059,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202610231531")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611031141")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
