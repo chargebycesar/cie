@@ -296,6 +296,12 @@ button.enlace:hover{color:#0f4396}
 .buscar-cp[disabled]{opacity:.55;cursor:default}
 #aviso-cp{margin:6px 0 0}
 #aviso-cp.error{color:var(--error)}
+/* El aviso del CUPS: las dos letras del final llevan cuenta de las otras
+   dieciocho, asi que un error de tecleo se caza aqui y no tres semanas
+   despues, cuando la EICI devuelve el certificado. */
+#aviso-cups{margin:-6px 0 8px}
+#aviso-cups.bien{color:var(--ok)}
+#aviso-cups.mal{color:var(--error)}
 
 /* ── Mapa visual del impreso: la hoja con sus huecos rellenables encima ── */
 .mapa-impreso{margin-top:12px}

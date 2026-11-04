@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041748"
-import { identificador, estado } from "./cie.js?v=202611041748"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041809"
+import { identificador, estado } from "./cie.js?v=202611041809"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202611041748";
+         normalizar } from "./cp.js?v=202611041809";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -69,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202611041748")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611041809")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -100,6 +100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   restaurarBorrador();
   ajustarRepresentante();
   copiarDireccionALaComunidad();
+  avisarCups();
   recalcular();
 
   // Se traen los impresos por adelantado para que generar sea instantáneo
@@ -447,7 +448,7 @@ function recalcular() {
 // veces.
 form.addEventListener("input", e => {
   recalcular();
-  if (e.target.name === "cups") ponerDistribuidora();
+  if (e.target.name === "cups") { ponerDistribuidora(); avisarCups(); }
   if (/^titular_(nif|nombre)$|^repre_/.test(e.target.name || "")) ajustarRepresentante();
   if (e.target.name in COMUNIDAD_COPIA) e.target.dataset.tocado = "1";
   else if (/^(empl|titular)_(localidad|cp|provincia)$/.test(e.target.name || "")) {
@@ -458,6 +459,27 @@ form.addEventListener("input", e => {
 
 function ponerDistribuidora() {
   form.elements.distribuidora.value = distribuidoraPorCups(form.elements.cups.value, CFG);
+}
+
+/* El CUPS, comprobado segun se escribe.
+
+   Las dos letras del final son la cuenta de control de las dieciocho cifras de
+   delante, asi que una tecla mal se caza aqui mismo. Antes el aviso salia al
+   generar, con los documentos ya descargados; ahora se ve mientras se escribe
+   y al pulsar Generar se pregunta antes de seguir.
+
+   La regla no se repite: se pregunta al motor, que es quien la sabe. */
+function avisarCups() {
+  const caja = $("#aviso-cups");
+  if (!caja) return;
+  const r = validarCups(form.elements.cups.value);
+  caja.classList.toggle("bien", r.valido === true);
+  caja.classList.toggle("mal", r.valido === false);
+  caja.textContent = r.valido === true
+    ? "CUPS correcto: las dos letras del final cuadran."
+    : r.valido === false
+      ? "Ese CUPS no es válido: las dos letras del final no cuadran con las cifras."
+      : "";
 }
 
 /* ══════════════ borrador ══════════════ */
@@ -504,6 +526,7 @@ function cargarDatos(d, avisar = true) {
   $("#mismo_domicilio").checked = mismo;
   $("#bloque-emplazamiento").hidden = mismo;
   ponerDistribuidora();
+  avisarCups();
   ajustarRepresentante();
   // Lo que venga guardado manda: si trae algo escrito, no se pisa.
   for (const suyo of Object.keys(COMUNIDAD_COPIA)) {
@@ -528,6 +551,22 @@ form.addEventListener("submit", async e => {
   btn.disabled = true;
   btn.textContent = "Generando…";
   $("#resultado").hidden = true;
+
+  // Con el CUPS mal, lo normal es que sea una tecla: se pregunta antes de
+  // generar, no se bloquea. Un CIE sin CUPS sale como INCOMPLETO, y eso a
+  // veces se entrega a propósito, mientras llega el dato.
+  const cups = validarCups(form.elements.cups.value);
+  if (cups.valido !== true) {
+    const motivo = cups.valido === false
+      ? "El CUPS no es válido: las dos letras del final no cuadran con las cifras."
+      : "No has escrito el CUPS, así que el CIE saldrá como «CIE INCOMPLETO».";
+    if (!confirm(`${motivo}\n\n¿Generar los documentos igualmente?`)) {
+      btn.disabled = false;
+      btn.textContent = "Generar documentos";
+      form.elements.cups.focus();
+      return;
+    }
+  }
 
   // Se capturan los datos una sola vez: el formulario sigue siendo editable
   // mientras se genera, y lo que se archive tiene que ser lo que salió impreso.
@@ -640,6 +679,7 @@ $("#btn-limpiar").addEventListener("click", () => {
   $("#pista-cp").hidden = !$("#incluir_anexo_garaje").checked;
   ponerFechaHoy();
   $("#resultado").hidden = true;
+  avisarCups();
   recalcular();
 });
 
@@ -1041,7 +1081,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041748")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041809")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1063,7 +1103,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041748")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041809")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;

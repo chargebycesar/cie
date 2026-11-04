@@ -156,6 +156,17 @@ calibre, la misma sección de arriba y 6 kA de poder de corte. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 
+## El CUPS se comprueba mientras lo escribes
+
+Las dos letras del final de un CUPS son la cuenta de control de las dieciocho
+cifras de delante, así que una tecla mal se caza sola. Debajo del campo sale en
+verde **«CUPS correcto»** o en rojo **«ese CUPS no es válido»**.
+
+Al pulsar *Generar documentos* con el CUPS mal —o sin CUPS— la aplicación
+pregunta antes de seguir: te dice qué falla y tú decides. Sin CUPS el CIE sale
+como «CIE INCOMPLETO», que a veces es justo lo que quieres mientras llega el
+dato. Con el CUPS bien no pregunta nada.
+
 ## Antes de firmar, revisa siempre
 
 La aplicación rellena, no decide. Estas tres cosas conviene mirarlas:

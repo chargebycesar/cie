@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boletines IRVE · Comunidad de Madrid</title>
-<link rel="stylesheet" href="estilos.css?v=202611041748">
+<link rel="stylesheet" href="estilos.css?v=202611041809">
 </head>
 <body>
 
@@ -177,12 +177,13 @@
         <label class="c6">Esquema ITC-BT-52
           <select name="esquema" data-lista="esquemas"></select></label>
 
-        <label class="c6">CUPS <input name="cups" placeholder="ES0031000000000000AB"></label>
+        <label class="c6">CUPS <input name="cups" placeholder="ES0021000000000000RC"></label>
         <label class="c3">Empresa distribuidora
           <input name="distribuidora" readonly class="calculado"
                  placeholder="se rellena sola al escribir el CUPS"></label>
         <label class="c3">Contador ubicado en
           <select name="ubicacion_contador" data-lista="ubicacion_contador"></select></label>
+        <p class="ayuda ancho" id="aviso-cups"></p>
 
         <label class="c3">Uso
           <select name="uso_irve"><option>PRIVADO</option><option>PÚBLICO</option></select></label>
@@ -390,6 +391,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202611041748"></script>
+<script type="module" src="app.js?v=202611041809"></script>
 </body>
 </html>
