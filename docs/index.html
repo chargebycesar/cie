@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boletines IRVE · Comunidad de Madrid</title>
-<link rel="stylesheet" href="estilos.css?v=202611041814">
+<link rel="stylesheet" href="estilos.css?v=202611041823">
 </head>
 <body>
 
@@ -337,8 +337,10 @@
   <p class="ayuda">
     Se escriben igual en todos los documentos y se guardan en este navegador.
     Solo hay que tocarlos si cambia algo. Puedes tener <strong>varias
-    empresas</strong> y elegir cuál firma cada expediente: una pestaña por
-    cada una.
+    empresas</strong>: una pestaña por cada una. La que lleve la marca
+    <strong>predeterminada</strong> es la que firma al abrir el programa y al
+    vaciar el formulario; para un expediente suelto se elige otra en el
+    desplegable de arriba, sin cambiar la predeterminada.
   </p>
   <div class="pestanas-doc" id="pestanas-empresa"></div>
   <div class="rejilla" id="bloque-empresa"></div>
@@ -348,6 +350,8 @@
     <button class="secundario" id="btn-anadir-empresa">Añadir otra empresa</button>
     <button class="secundario" id="btn-duplicar-empresa">Duplicar esta</button>
     <button class="secundario" id="btn-borrar-empresa">Borrar esta</button>
+    <button class="secundario" id="btn-empresa-defecto" hidden>
+      Usar esta por defecto</button>
     <span id="aviso-config" class="pista"></span>
   </div>
 
@@ -391,6 +395,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module" src="app.js?v=202611041814"></script>
+<script type="module" src="app.js?v=202611041823"></script>
 </body>
 </html>

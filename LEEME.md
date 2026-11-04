@@ -156,6 +156,20 @@ calibre, la misma sección de arriba y 6 kA de poder de corte. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 
+## Con qué empresa se firma
+
+Si tienes varias empresas, en **Configuración** cada una tiene su pestaña y la
+que lleva la marca verde **PREDETERMINADA** es la que firma: la que sale al
+abrir el programa y al **vaciar el formulario**. Para cambiarla, abre su
+pestaña y pulsa *Usar esta por defecto*.
+
+Para un expediente suelto se elige otra en el **desplegable de arriba del
+formulario**. Eso vale solo para ese expediente: la predeterminada no cambia, y
+en cuanto vacíes el formulario vuelve a salir ella.
+
+Los expedientes ya hechos siguen abriéndose con la empresa que los firmó, sea
+cual sea la de hoy.
+
 ## La marca y el modelo del cargador
 
 El campo **Marca y modelo del cargador** viene ya escrito, con el cargador que

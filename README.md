@@ -239,6 +239,35 @@ cada impreso, dibuja cada página a imagen y apunta de cada campo dónde está y
 qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena la
 aplicación. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
+### La empresa predeterminada y la del expediente
+
+`empresa_activa` hacía dos papeles a la vez: la que firma este expediente y la
+que sale al empezar. Elegir una en el desplegable cambiaba también la de por
+defecto. Ahora son dos:
+
+| | Qué es | Dónde se cambia |
+|---|---|---|
+| `empresa_predeterminada` | la que firma al abrir y al vaciar | Configuración, botón *Usar esta por defecto* |
+| `empresa_activa` | la de **este** expediente | el desplegable del formulario |
+
+Quien tenga ajustes de antes no trae predeterminada: se toma la activa que
+hubiera —que es la que estaba usando— y **se guarda en el acto**. Si no se
+guardara, al recargar se volvería a sacar de la activa, que para entonces sería
+la del último expediente, y la predeterminada iría cambiando sola.
+
+Dos trampas que salieron al hacerlo:
+
+- **El desplegable volvía a la primera empresa al vaciar.** `form.reset()` no
+  deja el desplegable como estaba: lo devuelve a su estado **inicial**, y las
+  opciones se creaban sin marcar ninguna como inicial. Se arregla con el tercer
+  argumento de `new Option(texto, valor, inicial, elegida)`.
+- **Lo tecleado en Configuración podía acabar en la otra empresa.**
+  `recogerEmpresa` guardaba en `empresaElegida()`, o sea en `empresa_activa`.
+  Al vaciar el formulario, la activa vuelve a la predeterminada mientras la
+  pantalla sigue enseñando otra pestaña: en ese hueco, lo de una empresa se
+  copiaba encima de la otra. Ahora se guarda en `EMPRESA_EN_PANTALLA`, la que
+  pintó `pintarConfigEmpresa`, que es la que el usuario está viendo.
+
 ### La marca y el modelo del cargador es un valor técnico más
 
 `descripcion_punto` era una leyenda gris: si no se escribía nada, los

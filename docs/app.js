@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041814"
-import { identificador, estado } from "./cie.js?v=202611041814"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041823"
+import { identificador, estado } from "./cie.js?v=202611041823"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202611041814";
+         normalizar } from "./cp.js?v=202611041823";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -61,6 +61,7 @@ function guardarAjustes() {
   return escribir(CLAVE_AJUSTES, {
     empresas: CFG.empresas,
     empresa_activa: CFG.empresa_activa,
+    empresa_predeterminada: CFG.empresa_predeterminada,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
     valores_fijos_mtd: CFG.valores_fijos_mtd,
@@ -73,14 +74,14 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202611041814")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611041823")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
     return;
   }
   const guardado = leer(CLAVE_AJUSTES, null);
-  prepararEmpresas(guardado);
+  const migroEmpresa = prepararEmpresas(guardado);
   if (guardado) {
     CFG.tecnica = { ...CFG.tecnica, ...guardado.tecnica };
     CFG.codigos_postales = { ...CFG.codigos_postales, ...guardado.codigos_postales };
@@ -93,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   rellenarListas();
   aplicarValoresTecnicos(CFG.tecnica);
-  if (migrarLibreta() || migrarOpciones()) guardarAjustes();
+  if (migroEmpresa || migrarLibreta() || migrarOpciones()) guardarAjustes();
   pintarLocalidades();
   pintarConfigEmpresa();
   pintarSelectorEmpresa();
@@ -680,7 +681,15 @@ function mostrarResultado(r, datos) {
 $("#btn-limpiar").addEventListener("click", () => {
   if (!confirm("¿Vaciar todos los campos del formulario?")) return;
   if (MIRANDO_ANTIGUO) aplicarConfiguracion(configuracionGuardada(), false);
+  // Vaciar es empezar de cero: vuelve a firmar la predeterminada.
+  if (!MIRANDO_ANTIGUO && empresaPorId(CFG.empresa_predeterminada)) {
+    CFG.empresa_activa = CFG.empresa_predeterminada;
+    CFG.empresa = empresaElegida();
+  }
   form.reset();
+  pintarSelectorEmpresa();
+  pintarConfigEmpresa();
+  guardarAjustes();
   localStorage.removeItem(CLAVE_BORRADOR);
   rellenarListas();
   aplicarValoresTecnicos(CFG.tecnica);
@@ -836,19 +845,56 @@ function prepararEmpresas(guardado) {
   // Cada una con todos sus huecos, por si algún día se añade un campo nuevo, y
   // con un identificador propio que no cambia aunque se cambie el nombre.
   CFG.empresas = lista.map(e => ({ ...plantilla, ...e, id: e.id || nuevoIdEmpresa() }));
-  CFG.empresa_activa = empresaPorId(g.empresa_activa) ? g.empresa_activa
-                                                      : CFG.empresas[0].id;
+  // Dos cosas distintas que antes eran una sola:
+  //   - la PREDETERMINADA, que se elige en Configuracion y es la que sale al
+  //     abrir el programa y al vaciar el formulario;
+  //   - la ACTIVA, la de este expediente, que se elige en el desplegable de
+  //     arriba y no toca la predeterminada.
+  // Quien tenga ajustes de antes no trae predeterminada: se toma la activa que
+  // hubiera, que es justo la que estaba usando.
+  CFG.empresa_predeterminada = empresaPorId(g.empresa_predeterminada)
+    ? g.empresa_predeterminada
+    : (empresaPorId(g.empresa_activa) ? g.empresa_activa : CFG.empresas[0].id);
+  CFG.empresa_activa = CFG.empresa_predeterminada;
   CFG.empresa = empresaElegida();
+  // Si venia de unos ajustes sin predeterminada, hay que dejarla escrita: si
+  // no, al recargar se volveria a sacar de la activa, que para entonces seria
+  // la del ultimo expediente, y la predeterminada iria cambiando sola.
+  return !empresaPorId(g.empresa_predeterminada);
+}
+
+/* Hacer predeterminada la empresa que se esta mirando en Configuracion. Desde
+   aqui tambien pasa a ser la del expediente que haya empezado: si acabas de
+   decir que firma esta, lo normal es que firme esta. */
+function hacerPredeterminada(id) {
+  recogerEmpresa();
+  if (!empresaPorId(id)) return;
+  CFG.empresa_predeterminada = id;
+  CFG.empresa_activa = id;
+  CFG.empresa = empresaElegida();
+  guardarAjustes();
+  pintarConfigEmpresa();
+  pintarSelectorEmpresa();
+  avisarFaltaEmpresa();
 }
 
 /* Recoge lo que hay escrito en la pestaña abierta. Se llama antes de cambiar de
    empresa y antes de añadir o borrar, para no perder lo tecleado. */
+/* Lo tecleado en Configuracion se guarda en la empresa QUE SE ESTA VIENDO, no
+   en la que diga `empresa_activa`. Son dos cosas que pueden separarse un
+   momento -al vaciar el formulario vuelve a firmar la predeterminada mientras
+   la pantalla sigue en otra pestaña- y, cuando se separaban, lo escrito de una
+   empresa se copiaba encima de la otra. */
+let EMPRESA_EN_PANTALLA = null;
+
 function recogerEmpresa() {
   if (MIRANDO_ANTIGUO) return;
-  const suya = empresaElegida();
+  const suya = empresaPorId(EMPRESA_EN_PANTALLA) || empresaElegida();
   $$("[data-empresa]").forEach(i => { suya[i.dataset.empresa] = i.value; });
 }
 
+/* La empresa de ESTE expediente. No toca la predeterminada: para eso esta el
+   boton de Configuracion. */
 function elegirEmpresa(id) {
   recogerEmpresa();
   if (!empresaPorId(id)) return;
@@ -884,9 +930,12 @@ function pintarSelectorEmpresa() {
   }
   sel.disabled = false;
   CFG.empresas.forEach(e => {
-    const o = new Option(nombreEmpresa(e), e.id);
-    o.selected = e.id === CFG.empresa_activa;
-    sel.appendChild(o);
+    // El tercer argumento marca la opcion como INICIAL, no solo como elegida.
+    // Sin el, al vaciar el formulario -form.reset()- el desplegable se iba a
+    // la primera empresa de la lista aunque firmara otra, y la pantalla dejaba
+    // de decir lo mismo que los datos.
+    const suya = e.id === CFG.empresa_activa;
+    sel.appendChild(new Option(nombreEmpresa(e), e.id, suya, suya));
   });
   barra.hidden = CFG.empresas.length < 2;
 }
@@ -912,10 +961,25 @@ function pintarPestanasEmpresa() {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = nombreEmpresa(e);
+    if (e.id === CFG.empresa_predeterminada) {
+      const marca = document.createElement("span");
+      marca.className = "predeterminada";
+      marca.textContent = "predeterminada";
+      b.appendChild(marca);
+    }
     b.className = e.id === CFG.empresa_activa ? "activa" : "";
     b.addEventListener("click", () => elegirEmpresa(e.id));
     caja.appendChild(b);
   });
+}
+
+/* El boton de hacerla predeterminada solo tiene sentido con mas de una empresa
+   y cuando la que estas mirando no lo es ya. */
+function pintarBotonPredeterminada() {
+  const b = $("#btn-empresa-defecto");
+  if (!b) return;
+  b.hidden = MIRANDO_ANTIGUO || CFG.empresas.length < 2
+    || CFG.empresa_activa === CFG.empresa_predeterminada;
 }
 
 const ETIQUETAS_EMPRESA = {
@@ -931,6 +995,8 @@ const ETIQUETAS_EMPRESA = {
 
 function pintarConfigEmpresa() {
   pintarPestanasEmpresa();
+  pintarBotonPredeterminada();
+  EMPRESA_EN_PANTALLA = MIRANDO_ANTIGUO ? null : CFG.empresa_activa;
   const caja = $("#bloque-empresa");
   caja.innerHTML = "";
   Object.entries(ETIQUETAS_EMPRESA).forEach(([k, etiqueta]) => {
@@ -1020,6 +1086,12 @@ $("#empresa-del-expediente").addEventListener("change", e => {
   avisar("#aviso-expediente", `Este expediente lo firma ${nombreEmpresa(CFG.empresa)}.`);
 });
 
+$("#btn-empresa-defecto").addEventListener("click", () => {
+  hacerPredeterminada(CFG.empresa_activa);
+  avisar("#aviso-config",
+         `«${nombreEmpresa(CFG.empresa)}» firma a partir de ahora.`);
+});
+
 $("#btn-guardar-preset").addEventListener("click", () => {
   CAMPOS_TECNICOS.forEach(k => {
     const c = form.elements[k];
@@ -1094,7 +1166,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041814")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041823")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1116,7 +1188,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041814")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041823")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
@@ -1675,6 +1747,7 @@ $("#btn-exportar").addEventListener("click", () => {
     version: 3,
     empresas: CFG.empresas,
     empresa_activa: CFG.empresa_activa,
+    empresa_predeterminada: CFG.empresa_predeterminada,
     tecnica: CFG.tecnica,
     codigos_postales: CFG.codigos_postales,
     valores_fijos_mtd: CFG.valores_fijos_mtd,
@@ -1704,6 +1777,7 @@ $("#fichero-importar").addEventListener("change", async e => {
     // Las copias de antes traían una sola empresa, sin lista.
     if (Array.isArray(c.empresas) ? c.empresas.length : c.empresa) {
       prepararEmpresas({ empresas: c.empresas, empresa_activa: c.empresa_activa,
+                         empresa_predeterminada: c.empresa_predeterminada,
                          empresa: c.empresa });
     }
     if (c.tecnica) CFG.tecnica = { ...CFG.tecnica, ...c.tecnica };

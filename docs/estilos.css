@@ -261,6 +261,13 @@ button.enlace:hover{color:#0f4396}
 }
 .pestanas-doc button:hover{color:var(--texto)}
 .pestanas-doc button.activa{color:var(--acento);border-bottom-color:var(--acento)}
+/* La empresa que firma al empezar. Se marca en su pestaña para no tener que
+   abrirlas una a una para saber cuál es. */
+.pestanas-doc .predeterminada{
+  margin-left:7px;padding:1px 6px;border-radius:9px;
+  background:var(--ok);color:#fff;font-size:11px;letter-spacing:.2px;
+  text-transform:uppercase;vertical-align:1px;
+}
 
 .casilla{display:flex;align-items:center;gap:8px;font-size:14px}
 .casilla input{width:auto;margin:0}
