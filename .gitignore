@@ -31,3 +31,10 @@ fuente/*-original*.pdf
 
 # Ajustes del editor, no son del proyecto
 .claude/
+
+# Spec Kit y las instrucciones para Claude: son del taller, no del programa.
+# No se suben a ningun repositorio mientras el usuario no lo pida.
+.specify/
+specs/
+.claude/
+CLAUDE.md
