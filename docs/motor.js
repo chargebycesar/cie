@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202611041823";
-import { rellenarPdf } from "./relleno.js?v=202611041823";
-import { generarCie } from "./cie.js?v=202611041823";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202611041829";
+import { rellenarPdf } from "./relleno.js?v=202611041829";
+import { generarCie } from "./cie.js?v=202611041829";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];

@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041823"
-import { identificador, estado } from "./cie.js?v=202611041823"
-import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202611041823";
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041829"
+import { identificador, estado } from "./cie.js?v=202611041829"
+import { buscarCodigoPostal, claveCalle, codigoUnicoDe, codigosDe, esCodigoPostal,
+         indiceMunicipios, municipioDe, normalizar } from "./cp.js?v=202611041829";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -44,6 +44,10 @@ const CAMPOS_TECNICOS = [
 ];
 
 let CFG = null;
+/* Los municipios de la provincia. Si por lo que sea no se pudieran cargar, la
+   aplicación sigue funcionando: el desplegable se queda con lo de la libreta,
+   como antes, y el código postal con el botón de siempre. */
+let INDICE_MUNICIPIOS = new Map();
 const CACHE_PLANTILLAS = new Map();
 
 /* ══════════════ guardar y recuperar ══════════════ */
@@ -74,11 +78,17 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202611041823")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611041829")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
     return;
+  }
+  try {
+    const municipios = await (await fetch("datos/municipios-madrid.json?v=202611041829")).json();
+    INDICE_MUNICIPIOS = indiceMunicipios(municipios);
+  } catch (e) {
+    INDICE_MUNICIPIOS = new Map();   // se sigue pudiendo trabajar sin la lista
   }
   const guardado = leer(CLAVE_AJUSTES, null);
   const migroEmpresa = prepararEmpresas(guardado);
@@ -256,13 +266,19 @@ function migrarLibreta() {
   return cambio;
 }
 
+/* El desplegable de Localidad: los 179 municipios de la provincia, que vienen
+   dentro de la aplicación, y los que hayas escrito tú aunque no estén en la
+   lista -una pedanía, un nombre de otra manera-. Los de la lista mandan: si el
+   tuyo es el mismo escrito sin tildes, no sale dos veces. */
 function pintarLocalidades() {
   const lista = $("#lista-localidades");
   if (!lista) return;
-  const nombres = [...new Set(Object.keys(libreta()).map(municipioDe))]
-    .filter(Boolean).sort();
+  const oficiales = [...INDICE_MUNICIPIOS.values()].map(m => m.nombre);
+  const suyos = [...new Set(Object.keys(libreta()).map(municipioDe))]
+    .filter(n => n && !INDICE_MUNICIPIOS.has(normalizar(n)));
   lista.innerHTML = "";
-  nombres.forEach(n => lista.appendChild(new Option(n, n)));
+  [...oficiales, ...suyos].sort()
+    .forEach(n => lista.appendChild(new Option(n, n)));
 }
 
 /* Las sugerencias de cada casilla: los códigos que ya has usado en ese
@@ -285,13 +301,31 @@ function avisarCp(texto, error = false) {
 
 /* Al salir de la localidad o de la calle: si esa calle ya se usó, se pone su
    código. Nunca se rellena a partir del municipio solo. */
+/* Lo que escribe aqui esta misma funcion, para saber si se puede borrar. */
+const MIO_CP = /^\d{5} es el único código postal/;
+
 function completarCodigoPostal(pre) {
   pintarSugerencias(pre);
   const campo = form.elements[(CAMPOS_DIRECCION[pre] || {}).cp];
   if (!campo || campo.value.trim()) return;
+  // Primero lo que recuerdas de esa calle, que es lo más fino. Si no hay nada,
+  // el del municipio, y solo si tiene uno: con varios no se inventa ninguno.
+  const municipio = valor((CAMPOS_DIRECCION[pre] || {}).localidad);
   const guardado = libreta()[claveDe(pre)];
-  if (!esCodigoPostal(guardado)) return;
-  campo.value = guardado;
+  const cp = esCodigoPostal(guardado)
+    ? guardado
+    : codigoUnicoDe(INDICE_MUNICIPIOS, municipio);
+  if (!esCodigoPostal(cp)) {
+    // Que no se quede en pantalla el aviso del municipio anterior diciendo
+    // que su codigo es el unico. Lo del boton del callejero no se toca.
+    if (MIO_CP.test($("#aviso-cp").textContent || "")) avisarCp("");
+    return;
+  }
+  if (cp !== guardado) {
+    avisarCp(`${cp} es el único código postal de ${municipio}. `
+      + "Si tu calle tiene otro, escríbelo o usa el botón.");
+  }
+  campo.value = cp;
   campo.classList.add("recordado");
   setTimeout(() => campo.classList.remove("recordado"), 1500);
   // Se ha escrito a mano en el campo, sin teclear: el escuchador de 'input' no
@@ -1166,7 +1200,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041823")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041829")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1188,7 +1222,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041823")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041829")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;

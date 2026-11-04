@@ -156,6 +156,23 @@ calibre, la misma sección de arriba y 6 kA de poder de corte. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 
+## El municipio y el código postal
+
+El desplegable de **Localidad** trae los **179 municipios de la Comunidad de
+Madrid** desde el primer día, sin haber escrito nada antes. Si el tuyo no está
+—una pedanía, otro nombre—, lo escribes y ya está: la lista no obliga.
+
+El **código postal** se pone solo cuando no hay duda:
+
+1. Si ya has hecho un expediente en esa calle, el que usaste.
+2. Si no, el del municipio **siempre que tenga uno solo** —140 de los 179—, y
+   te lo dice: «28850 es el único código postal de TORREJÓN DE ARDOZ».
+3. En los que tienen varios —Madrid, Alcalá, Getafe…— **no se inventa
+   ninguno**: lo escribes o pulsas *Buscar*.
+
+Nada de esto sale de tu ordenador: la lista viaja dentro del programa. El botón
+*Buscar* sigue siendo lo único que pregunta fuera, y solo cuando lo pulsas.
+
 ## Con qué empresa se firma
 
 Si tienes varias empresas, en **Configuración** cada una tiene su pestaña y la

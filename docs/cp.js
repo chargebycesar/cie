@@ -32,6 +32,31 @@ export function claveCalle(municipio, tipoVia, nombreVia) {
 
 export const municipioDe = clave => String(clave || "").split("|")[0];
 
+/* ── Los municipios de la provincia, con sus códigos postales ──────────────
+
+   La lista viaja dentro de la aplicación (`docs/datos/municipios-madrid.json`,
+   hecha con `herramientas/hacer_municipios.py`): así el desplegable sale lleno
+   desde el primer día y no hay que preguntar nada a nadie.
+
+   El índice se monta una vez y guarda el nombre tal cual —con sus tildes, que
+   es como va a los impresos— buscable por su forma normalizada, que es como se
+   escribe de verdad con las prisas. */
+export function indiceMunicipios(lista) {
+  const indice = new Map();
+  for (const [nombre, cps] of Object.entries(lista || {})) {
+    indice.set(normalizar(nombre), { nombre, cps: cps || [] });
+  }
+  return indice;
+}
+
+/* El código postal de un municipio, solo cuando no hay duda: si tiene varios
+   -Madrid, Alcalá, Getafe…- no se inventa ninguno. Antes se rellenaba por
+   municipio y era justo lo que fallaba. */
+export function codigoUnicoDe(indice, municipio) {
+  const m = indice && indice.get(normalizar(municipio));
+  return m && m.cps.length === 1 ? m.cps[0] : "";
+}
+
 export const esCodigoPostal = v => /^\d{5}$/.test(String(v || "").trim());
 
 /* Los códigos que ya conoces de un municipio, para ofrecerlos. Salen de lo que

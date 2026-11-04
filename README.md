@@ -239,6 +239,29 @@ cada impreso, dibuja cada página a imagen y apunta de cada campo dónde está y
 qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena la
 aplicación. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
+### Los municipios viajan dentro de la aplicación
+
+`docs/datos/municipios-madrid.json` lleva los 179 municipios de la provincia
+con sus códigos postales (6,9 KB). Lo hace
+`herramientas/hacer_municipios.py`, que se ejecuta **una vez, aquí**, no en la
+aplicación: baja el callejero del censo electoral del INE —publicado en
+`inigoflores/ds-codigos-postales-ine-es`—, se queda con los de la provincia 28
+y escribe el JSON. Si algún día cambia algo, se vuelve a ejecutar.
+
+Así el desplegable sale lleno sin haber escrito nada antes y sin preguntar a
+nadie, que es lo que pide el principio II: **el callejero del IGN se queda como
+estaba, solo con botón**. De hecho ahora se pulsa menos, así que sale menos
+información del ordenador que antes.
+
+El fichero guarda el nombre **con sus tildes y en orden natural** —«EL ÁLAMO»,
+no «Álamo, El»—, que es como va a los impresos, y se busca por su forma
+normalizada, que es como se teclea con prisa. Los municipios que ya tuvieras en
+la libreta y estén en la lista no salen dos veces.
+
+El código postal automático solo se pone cuando el municipio tiene **uno solo**
+(140 de 179). Con varios no se inventa ninguno: rellenar por municipio era
+justo lo que fallaba antes y por eso se quitó.
+
 ### La empresa predeterminada y la del expediente
 
 `empresa_activa` hacía dos papeles a la vez: la que firma este expediente y la

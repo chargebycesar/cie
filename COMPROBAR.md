@@ -20,6 +20,15 @@ titular empresa con representante y sin él, y configuración sin datos de empre
 
 **Ninguna debe romper.** Si alguna sale como ROMPE o FALLO, hay trabajo.
 
+## 1 bis. Si cambia la lista de municipios
+
+```bash
+python herramientas/hacer_municipios.py
+```
+
+Rehace `docs/datos/municipios-madrid.json`. Tiene que decir **179 municipios**;
+si salen menos, algo ha cambiado en el origen y hay que mirarlo antes de subir.
+
 ## 2. Que el navegador y Python siguen dando lo mismo
 
 ```bash
