@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041809"
-import { identificador, estado } from "./cie.js?v=202611041809"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041814"
+import { identificador, estado } from "./cie.js?v=202611041814"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202611041809";
+         normalizar } from "./cp.js?v=202611041814";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -37,6 +37,10 @@ const CAMPOS_TECNICOS = [
   "plaza_planta",
   // lo que lleve el cuadro ademas del general y el diferencial
   "extra_tipo", "extra_a",
+  // La marca y el modelo del cargador. No es un dato de la linea, pero se
+  // repite expediente tras expediente, asi que viene escrito y se guarda con
+  // el mismo boton que los demas.
+  "descripcion_punto",
 ];
 
 let CFG = null;
@@ -69,7 +73,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202611041809")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611041814")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -511,7 +515,16 @@ function cargarDatos(d, avisar = true) {
   aplicarValoresTecnicos(d);
   Object.entries(d).forEach(([k, v]) => {
     const campo = form.elements[k];
-    if (campo && campo.type !== "checkbox") campo.value = v ?? "";
+    if (!campo || campo.type === "checkbox") return;
+    // Un valor tecnico que llega vacio no deja el hueco en blanco: vuelve el
+    // predeterminado. Pasa con los borradores y los expedientes de antes de
+    // que ese campo existiera -la marca y el modelo del cargador-, que traen
+    // la clave escrita y vacia. En un expediente antiguo, el predeterminado es
+    // el que se guardo con el, asi que sigue saliendo lo que salio aquel dia.
+    const vacio = v == null || String(v).trim() === "";
+    campo.value = (vacio && CAMPOS_TECNICOS.includes(k))
+      ? (CFG.tecnica[k] ?? "")
+      : (v ?? "");
   });
   $("#incluir_anexo_garaje").checked = !!d.incluir_anexo_garaje;
   $("#bloque-cp").hidden = !d.incluir_anexo_garaje;
@@ -1081,7 +1094,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041809")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041814")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1103,7 +1116,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041809")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041814")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;

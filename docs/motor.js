@@ -5,9 +5,9 @@
  * Node para las pruebas.
  */
 
-import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202611041809";
-import { rellenarPdf } from "./relleno.js?v=202611041809";
-import { generarCie } from "./cie.js?v=202611041809";
+import { t, coma, punto, mayus, sinAcentos, limpiarParaPdf } from "./util.js?v=202611041814";
+import { rellenarPdf } from "./relleno.js?v=202611041814";
+import { generarCie } from "./cie.js?v=202611041814";
 
 export const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -302,14 +302,16 @@ export function textoProteccion(p) {
 export function lineasDescripcion(datos, tec, calc, cfg) {
   const plaza = t(datos.plaza_numero);
   const planta = t(datos.plaza_planta);
-  const desc = t(datos.descripcion_punto) || "PUNTO DE RECARGA V.E. TIPO 2";
+  // Viene de los valores tecnicos: ahi esta el cargador de siempre y, si en
+  // este expediente se ha escrito otro, el otro.
+  const desc = t(tec.descripcion_punto) || "PUNTO DE RECARGA V.E. TIPO 2";
   const origen = t(datos.origen_linea) || "CENTRALIZACIÓN DE CONTADORES";
 
   let cabecera;
   if (/\d[\d.,]*\s*k\s*w/i.test(desc)) {
     cabecera = `INSTALACIÓN DE ${desc}, DESDE ${origen}`;
   } else {
-    cabecera = `INSTALACIÓN DE ${desc}, ${punto(calc.potencia_kw)} kW, DESDE ${origen}`;
+    cabecera = `INSTALACIÓN DE ${desc}, ${coma(calc.potencia_kw)} kW, DESDE ${origen}`;
   }
   if (plaza) cabecera += `, HASTA PLAZA DE GARAJE Nº ${plaza}`;
   if (planta) cabecera += `, EN PLANTA ${planta}`;
@@ -420,7 +422,7 @@ export function mapaMtd(datos, cfg, tec, calc) {
     Texto73: mes,
     Texto74: anio,
     // página 2 · previsión de cargas
-    Texto191: t(datos.descripcion_punto) || "PUNTO DE RECARGA V.E. TIPO 2",
+    Texto191: t(tec.descripcion_punto) || "PUNTO DE RECARGA V.E. TIPO 2",
     Texto194: punto(calc.potencia_kw),
     Texto195: punto(calc.potencia_kw),
     Texto211: punto(calc.potencia_kw),
@@ -761,7 +763,7 @@ export function celdasCie(datos, cfg, tec, calc) {
       + `${(t(datos.ubicacion_fisica) || "INTERIOR").toUpperCase()}`,
     `Nº DE PUNTOS DE CONEXIÓN: ${t(datos.num_puntos) || "1"}, `
       + `ESQUEMA ${t(datos.esquema) || "2"}. `
-      + `${(t(datos.descripcion_punto) || "CONECTOR TIPO 2 MENNEKES").toUpperCase()}`,
+      + `${(t(tec.descripcion_punto) || "CONECTOR TIPO 2 MENNEKES").toUpperCase()}`,
     // lo que lleve el cuadro ademas del general y el diferencial
     ...proteccionesExtra(tec, cfg).map(textoProteccion),
   ].filter(Boolean).join("\n");

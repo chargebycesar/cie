@@ -239,6 +239,29 @@ cada impreso, dibuja cada página a imagen y apunta de cada campo dónde está y
 qué tamaño tiene, su página, el texto que tiene al lado y si lo rellena la
 aplicación. Hay que volver a ejecutarlo si Industria cambia un impreso.
 
+### La marca y el modelo del cargador es un valor técnico más
+
+`descripcion_punto` era una leyenda gris: si no se escribía nada, los
+documentos salían con `PUNTO DE RECARGA V.E. TIPO 2`, sin marca ni modelo.
+Ahora es un valor de `tecnica`, como la sección o el calibre del diferencial:
+viene escrito en el formulario, se cambia por expediente y se guarda con el
+botón de predeterminados.
+
+Los dos motores lo leen de los valores técnicos (`tec.descripcion_punto` /
+`preset["descripcion_punto"]`), no de los datos del formulario, que es lo que
+hace que el valor de fábrica llegue a los documentos cuando el usuario no
+escribe nada.
+
+**Ojo con los huecos vacíos**: un borrador o un expediente guardado antes de
+este cambio trae la clave escrita y vacía. `cargarDatos` ya no pisa un valor
+técnico con el vacío: vuelve al predeterminado —y en un expediente antiguo el
+predeterminado es el que se guardó con él, así que sigue saliendo lo de aquel
+día—.
+
+La potencia de la cabecera de la memoria pasa a escribirse con coma —7,36 kW—,
+que es como se lee en español. Antes casi nunca se veía, porque el usuario
+escribía la potencia dentro del texto del cargador.
+
 ### Cuando el titular es una empresa
 
 Una empresa no tiene apellidos y no firma sola. El impreso de la autorización

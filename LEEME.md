@@ -156,6 +156,21 @@ calibre, la misma sección de arriba y 6 kA de poder de corte. Con
 **Guardar estos valores como predeterminados** se queda puesto para los
 siguientes.
 
+## La marca y el modelo del cargador
+
+El campo **Marca y modelo del cargador** viene ya escrito, con el cargador que
+pones casi siempre. Se puede cambiar en cualquier expediente, y si cambias de
+cargador habitual lo dejas puesto y pulsas **Guardar estos valores como
+predeterminados**: a partir de ahí sale ese.
+
+El texto de fábrica no lleva la potencia —`PUNTO DE RECARGA VE TIPO 2 V2C
+TRYDAN`— porque la memoria del MTD la añade sola desde el campo de potencia:
+«INSTALACIÓN DE PUNTO DE RECARGA VE TIPO 2 V2C TRYDAN, 7,36 kW, DESDE…». Si la
+escribes tú dentro del texto, no se repite detrás.
+
+Ese mismo texto es el que sale en la información adicional del CIE y en la
+casilla de denominación del MTD.
+
 ## El CUPS se comprueba mientras lo escribes
 
 Las dos letras del final de un CUPS son la cuenta de control de las dieciocho

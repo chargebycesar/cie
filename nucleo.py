@@ -876,7 +876,7 @@ def mapa_mtd(datos, cfg, preset, calc):
         "Texto74": anio,
 
         # --- pagina 2: prevision de cargas ---
-        "Texto191": t(datos.get("descripcion_punto")) or "PUNTO DE RECARGA V.E. TIPO 2",
+        "Texto191": t(preset.get("descripcion_punto")) or "PUNTO DE RECARGA V.E. TIPO 2",
         "Texto194": punto(calc["potencia_kw"]),
         "Texto195": punto(calc["potencia_kw"]),
         "Texto211": punto(calc["potencia_kw"]),
@@ -1029,14 +1029,16 @@ def lineas_descripcion(datos, preset, calc, cfg=None):
     """Memoria descriptiva de la ultima pagina del MTD, un renglon por linea."""
     plaza = t(datos.get("plaza_numero"))
     planta = t(datos.get("plaza_planta"))
-    desc = t(datos.get("descripcion_punto")) or "PUNTO DE RECARGA V.E. TIPO 2"
+    # Viene de los valores tecnicos: ahi esta el cargador de siempre y, si en
+    # este expediente se ha escrito otro, el otro.
+    desc = t(preset.get("descripcion_punto")) or "PUNTO DE RECARGA V.E. TIPO 2"
     origen = t(datos.get("origen_linea")) or "CENTRALIZACIÓN DE CONTADORES"
 
     # Si en la marca y modelo ya has escrito la potencia, no se repite detras.
     if re.search(r"\d[\d.,]*\s*k\s*w", desc, re.IGNORECASE):
         cabecera = f"INSTALACIÓN DE {desc}, DESDE {origen}"
     else:
-        cabecera = (f"INSTALACIÓN DE {desc}, {punto(calc['potencia_kw'])} kW, "
+        cabecera = (f"INSTALACIÓN DE {desc}, {coma(calc['potencia_kw'])} kW, "
                     f"DESDE {origen}")
     if plaza:
         cabecera += f", HASTA PLAZA DE GARAJE Nº {plaza}"
@@ -1341,7 +1343,7 @@ def celdas_cie(datos, cfg, preset, calc):
         f"{t(datos.get('ubicacion_fisica', 'INTERIOR')).upper()}",
         f"Nº DE PUNTOS DE CONEXIÓN: {t(datos.get('num_puntos', '1'))}, "
         f"ESQUEMA {t(datos.get('esquema', '2'))}. "
-        f"{t(datos.get('descripcion_punto', 'CONECTOR TIPO 2 MENNEKES')).upper()}",
+        f"{(t(preset.get('descripcion_punto')) or 'CONECTOR TIPO 2 MENNEKES').upper()}",
         # lo que lleve el cuadro ademas del general y el diferencial
         *[texto_proteccion(p) for p in protecciones_extra(preset, cfg)],
     ] if x)
