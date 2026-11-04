@@ -8,10 +8,10 @@
 import { generarExpediente, valoresTecnicos, calcular, distribuidoraPorCups,
          mapaMtd, mapaAnexoIve, mapaUnifilar, mapaSolicitud, mapaAutorizacion,
          mapaAnexoGaraje, celdasCie, validarCups, esEmpresa,
-         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611031141"
-import { identificador, estado } from "./cie.js?v=202611031141"
+         aplicarOpciones, aplicarExtras } from "./motor.js?v=202611041748"
+import { identificador, estado } from "./cie.js?v=202611041748"
 import { buscarCodigoPostal, claveCalle, codigosDe, esCodigoPostal, municipioDe,
-         normalizar } from "./cp.js?v=202611031141";
+         normalizar } from "./cp.js?v=202611041748";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const $$ = (s, raiz = document) => [...raiz.querySelectorAll(s)];
@@ -69,7 +69,7 @@ function guardarAjustes() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    CFG = await (await fetch("config-inicial.json?v=202611031141")).json();
+    CFG = await (await fetch("config-inicial.json?v=202611041748")).json();
   } catch (e) {
     $("#cargando").innerHTML = "<strong>No he podido cargar la configuración.</strong> "
       + "Recarga la página.";
@@ -288,6 +288,9 @@ function completarCodigoPostal(pre) {
   campo.value = guardado;
   campo.classList.add("recordado");
   setTimeout(() => campo.classList.remove("recordado"), 1500);
+  // Se ha escrito a mano en el campo, sin teclear: el escuchador de 'input' no
+  // se entera, asi que hay que avisar aqui o la comunidad se queda atras.
+  copiarDireccionALaComunidad();
 }
 
 Object.keys(CAMPOS_DIRECCION).forEach(pre => {
@@ -320,6 +323,7 @@ $$(".buscar-cp").forEach(boton => {
       }
       const [primera, ...otras] = r.opciones;
       if (campo) campo.value = primera.cp;
+      copiarDireccionALaComunidad();   // igual que arriba: no hay 'input'
       let cambio = apuntarCodigo(claveDe(pre), primera.cp);
       // Los demás códigos de esa calle se apuntan como sugerencia del
       // municipio, para tenerlos a mano la próxima vez.
@@ -1037,7 +1041,7 @@ let CAMPOS_IMPRESOS = null;
 async function camposDelImpreso(archivo) {
   if (CAMPOS_IMPRESOS === null) {
     try {
-      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611031141")).json();
+      CAMPOS_IMPRESOS = await (await fetch("plantillas/campos.json?v=202611041748")).json();
     } catch (e) {
       CAMPOS_IMPRESOS = {};
     }
@@ -1059,7 +1063,7 @@ let REJILLA_CIE = null;
 
 async function mapaCie() {
   if (MAPA_CIE === null) {
-    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611031141")).json(); }
+    try { MAPA_CIE = await (await fetch("plantillas/cie_mapa.json?v=202611041748")).json(); }
     catch (e) { MAPA_CIE = {}; }
   }
   return MAPA_CIE;
